@@ -7,6 +7,16 @@ type ReasonCode string
 const (
 	// ReasonCodeAdmissionConfigurationExcluded identifies Kubernetes admission configuration self-exclusion.
 	ReasonCodeAdmissionConfigurationExcluded ReasonCode = "ADMISSION_CONFIGURATION_EXCLUDED"
+	// ReasonCodeAuthorizationContextMissing identifies an absent fixture decision required by a CEL authorizer query.
+	ReasonCodeAuthorizationContextMissing ReasonCode = "AUTHORIZATION_CONTEXT_MISSING"
+	// ReasonCodeCELAuthorizationError identifies an explicit fixture authorizer error observed during CEL evaluation.
+	ReasonCodeCELAuthorizationError ReasonCode = "CEL_AUTHORIZATION_ERROR"
+	// ReasonCodeCELCompileError identifies a match condition that did not compile.
+	ReasonCodeCELCompileError ReasonCode = "CEL_COMPILE_ERROR"
+	// ReasonCodeCELCostBudgetExceeded identifies exhaustion of the matchConditions runtime cost budget.
+	ReasonCodeCELCostBudgetExceeded ReasonCode = "CEL_COST_BUDGET_EXCEEDED"
+	// ReasonCodeCELRuntimeError identifies a match condition runtime evaluation error.
+	ReasonCodeCELRuntimeError ReasonCode = "CEL_RUNTIME_ERROR"
 	// ReasonCodeCapabilityOutsideProfile identifies semantics outside the selected compatibility profile.
 	ReasonCodeCapabilityOutsideProfile ReasonCode = "CAPABILITY_OUTSIDE_PROFILE"
 	// ReasonCodeEvaluationProblemDiscarded identifies a previously pending evaluation problem that no longer controls the result.
@@ -23,6 +33,8 @@ const (
 	ReasonCodeKubernetesEvaluationError ReasonCode = "KUBERNETES_EVALUATION_ERROR"
 	// ReasonCodeMatchConditionsTrue identifies that every configured match condition evaluated to true.
 	ReasonCodeMatchConditionsTrue ReasonCode = "MATCH_CONDITIONS_TRUE"
+	// ReasonCodeMatchConditionFalse identifies a match condition that evaluated to false.
+	ReasonCodeMatchConditionFalse ReasonCode = "MATCH_CONDITION_FALSE"
 	// ReasonCodeMatchConditionTrue identifies a match condition that evaluated to true.
 	ReasonCodeMatchConditionTrue ReasonCode = "MATCH_CONDITION_TRUE"
 	// ReasonCodeNamespaceContextMissing identifies required namespace fixture context that was not supplied.
@@ -79,6 +91,11 @@ type ReasonDefinition struct {
 
 var reasonCodeRegistry = [...]ReasonDefinition{
 	{Code: ReasonCodeAdmissionConfigurationExcluded, Disposition: ReasonDispositionCompleted},
+	{Code: ReasonCodeAuthorizationContextMissing, Disposition: ReasonDispositionCompleted},
+	{Code: ReasonCodeCELAuthorizationError, Disposition: ReasonDispositionCompleted},
+	{Code: ReasonCodeCELCompileError, Disposition: ReasonDispositionCompleted},
+	{Code: ReasonCodeCELCostBudgetExceeded, Disposition: ReasonDispositionCompleted},
+	{Code: ReasonCodeCELRuntimeError, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeCapabilityOutsideProfile, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeEvaluationProblemDiscarded, Disposition: ReasonDispositionDiscarded},
 	{Code: ReasonCodeEvaluationProblemPending, Disposition: ReasonDispositionPending},
@@ -87,6 +104,7 @@ var reasonCodeRegistry = [...]ReasonDefinition{
 	{Code: ReasonCodeInvalidInput, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeKubernetesEvaluationError, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeMatchConditionsTrue, Disposition: ReasonDispositionCompleted},
+	{Code: ReasonCodeMatchConditionFalse, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeMatchConditionTrue, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeNamespaceContextMissing, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeNamespaceSelectorMatch, Disposition: ReasonDispositionCompleted},

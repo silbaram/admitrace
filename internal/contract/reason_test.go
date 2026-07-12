@@ -13,6 +13,11 @@ func TestReasonCodeRegistry(t *testing.T) {
 
 	want := []contract.ReasonDefinition{
 		{Code: contract.ReasonCodeAdmissionConfigurationExcluded, Disposition: contract.ReasonDispositionCompleted},
+		{Code: contract.ReasonCodeAuthorizationContextMissing, Disposition: contract.ReasonDispositionCompleted},
+		{Code: contract.ReasonCodeCELAuthorizationError, Disposition: contract.ReasonDispositionCompleted},
+		{Code: contract.ReasonCodeCELCompileError, Disposition: contract.ReasonDispositionCompleted},
+		{Code: contract.ReasonCodeCELCostBudgetExceeded, Disposition: contract.ReasonDispositionCompleted},
+		{Code: contract.ReasonCodeCELRuntimeError, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeCapabilityOutsideProfile, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeEvaluationProblemDiscarded, Disposition: contract.ReasonDispositionDiscarded},
 		{Code: contract.ReasonCodeEvaluationProblemPending, Disposition: contract.ReasonDispositionPending},
@@ -21,6 +26,7 @@ func TestReasonCodeRegistry(t *testing.T) {
 		{Code: contract.ReasonCodeInvalidInput, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeKubernetesEvaluationError, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeMatchConditionsTrue, Disposition: contract.ReasonDispositionCompleted},
+		{Code: contract.ReasonCodeMatchConditionFalse, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeMatchConditionTrue, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeNamespaceContextMissing, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeNamespaceSelectorMatch, Disposition: contract.ReasonDispositionCompleted},
