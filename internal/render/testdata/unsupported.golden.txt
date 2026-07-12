@@ -1,0 +1,34 @@
+schemaVersion: admitrace.result/v1alpha1
+scenario: "unsupported-case"
+compatibilityProfile: kubernetes-1.36.2-defaults
+kubernetesVersion: 1.36.2
+featureGatePolicy: kubernetes-defaults
+evaluationPhase: snapshot-routing
+configurationKind: ValidatingWebhookConfiguration
+webhooks:
+  - index: 0
+    name: "selector.example.com"
+    sourcePath: ".configuration.validatingWebhookConfiguration.webhooks[0]"
+    configurationKind: ValidatingWebhookConfiguration
+    determination: unsupported
+    outcome: null
+    terminalReasons:
+      - CAPABILITY_OUTSIDE_PROFILE
+    trace:
+      - sequence: 0
+        stage: "matchConditions"
+        sourcePath: ".configuration.validatingWebhookConfiguration.webhooks[0].matchConditions[0]"
+        result: unsupported
+        reasonCode: CAPABILITY_OUTSIDE_PROFILE
+        terminal: true
+        pending: false
+        discarded: false
+        inputSummary:
+          "expression": "redacted"
+    diagnostics:
+      - sourcePath: ".configuration.validatingWebhookConfiguration.webhooks[0].matchConditions[0]"
+        code: CAPABILITY_OUTSIDE_PROFILE
+        severity: info
+        message: "evaluation scope is limited"
+        unsupportedCapability: "CEL authorizer fieldSelector" ("selector authorization is outside the offline profile")
+diagnostics: null

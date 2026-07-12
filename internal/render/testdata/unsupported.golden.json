@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "admitrace.result/v1alpha1",
+  "scenarioId": "unsupported-case",
+  "compatibilityProfile": {
+    "id": "kubernetes-1.36.2-defaults",
+    "kubernetesVersion": "1.36.2",
+    "featureGatePolicy": "kubernetes-defaults"
+  },
+  "evaluationPhase": "snapshot-routing",
+  "configurationKind": "ValidatingWebhookConfiguration",
+  "webhooks": [
+    {
+      "configurationKind": "ValidatingWebhookConfiguration",
+      "webhookName": "selector.example.com",
+      "webhookIndex": 0,
+      "sourcePath": ".configuration.validatingWebhookConfiguration.webhooks[0]",
+      "determination": "unsupported",
+      "trace": [
+        {
+          "stage": "matchConditions",
+          "sequence": 0,
+          "sourcePath": ".configuration.validatingWebhookConfiguration.webhooks[0].matchConditions[0]",
+          "inputSummary": {
+            "expression": "redacted"
+          },
+          "result": "unsupported",
+          "reasonCode": "CAPABILITY_OUTSIDE_PROFILE",
+          "terminal": true,
+          "pending": false,
+          "discarded": false
+        }
+      ],
+      "diagnostics": [
+        {
+          "code": "CAPABILITY_OUTSIDE_PROFILE",
+          "severity": "info",
+          "message": "evaluation scope is limited",
+          "sourcePath": ".configuration.validatingWebhookConfiguration.webhooks[0].matchConditions[0]",
+          "unsupportedCapability": {
+            "capability": "CEL authorizer fieldSelector",
+            "detail": "selector authorization is outside the offline profile"
+          }
+        }
+      ]
+    }
+  ],
+  "diagnostics": null
+}

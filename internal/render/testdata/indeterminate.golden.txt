@@ -1,0 +1,34 @@
+schemaVersion: admitrace.result/v1alpha1
+scenario: "indeterminate-case"
+compatibilityProfile: kubernetes-1.36.2-defaults
+kubernetesVersion: 1.36.2
+featureGatePolicy: kubernetes-defaults
+evaluationPhase: snapshot-routing
+configurationKind: ValidatingWebhookConfiguration
+webhooks:
+  - index: 0
+    name: "missing-namespace.example.com"
+    sourcePath: ".configuration.validatingWebhookConfiguration.webhooks[0]"
+    configurationKind: ValidatingWebhookConfiguration
+    determination: indeterminate
+    outcome: null
+    terminalReasons:
+      - NAMESPACE_CONTEXT_MISSING
+    trace:
+      - sequence: 0
+        stage: "namespaceSelector"
+        sourcePath: ".configuration.validatingWebhookConfiguration.webhooks[0].namespaceSelector"
+        result: indeterminate
+        reasonCode: NAMESPACE_CONTEXT_MISSING
+        terminal: true
+        pending: false
+        discarded: false
+        inputSummary:
+          "namespace": "payments"
+    diagnostics:
+      - sourcePath: ".configuration.validatingWebhookConfiguration.webhooks[0].namespaceSelector"
+        code: NAMESPACE_CONTEXT_MISSING
+        severity: warning
+        message: "required fixture context is missing"
+        missingContext: "namespace" ("payments")
+diagnostics: null

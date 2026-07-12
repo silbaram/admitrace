@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "admitrace.result/v1alpha1",
+  "scenarioId": "indeterminate-case",
+  "compatibilityProfile": {
+    "id": "kubernetes-1.36.2-defaults",
+    "kubernetesVersion": "1.36.2",
+    "featureGatePolicy": "kubernetes-defaults"
+  },
+  "evaluationPhase": "snapshot-routing",
+  "configurationKind": "ValidatingWebhookConfiguration",
+  "webhooks": [
+    {
+      "configurationKind": "ValidatingWebhookConfiguration",
+      "webhookName": "missing-namespace.example.com",
+      "webhookIndex": 0,
+      "sourcePath": ".configuration.validatingWebhookConfiguration.webhooks[0]",
+      "determination": "indeterminate",
+      "trace": [
+        {
+          "stage": "namespaceSelector",
+          "sequence": 0,
+          "sourcePath": ".configuration.validatingWebhookConfiguration.webhooks[0].namespaceSelector",
+          "inputSummary": {
+            "namespace": "payments"
+          },
+          "result": "indeterminate",
+          "reasonCode": "NAMESPACE_CONTEXT_MISSING",
+          "terminal": true,
+          "pending": false,
+          "discarded": false
+        }
+      ],
+      "diagnostics": [
+        {
+          "code": "NAMESPACE_CONTEXT_MISSING",
+          "severity": "warning",
+          "message": "required fixture context is missing",
+          "sourcePath": ".configuration.validatingWebhookConfiguration.webhooks[0].namespaceSelector",
+          "missingContext": {
+            "context": "namespace",
+            "reference": "payments"
+          }
+        }
+      ]
+    }
+  ],
+  "diagnostics": null
+}

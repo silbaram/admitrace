@@ -1,0 +1,2 @@
+json: render canonical JSON: invalid input: field "result": diagnostics[0]: code "UNREGISTERED": unregistered reason code
+text: render text: invalid input: field "result": diagnostics[0]: code "UNREGISTERED": unregistered reason code

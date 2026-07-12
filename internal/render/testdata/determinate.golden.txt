@@ -1,0 +1,78 @@
+schemaVersion: admitrace.result/v1alpha1
+scenario: "determinate-case"
+compatibilityProfile: kubernetes-1.36.2-defaults
+kubernetesVersion: 1.36.2
+featureGatePolicy: kubernetes-defaults
+evaluationPhase: snapshot-routing
+configurationKind: ValidatingWebhookConfiguration
+webhooks:
+  - index: 0
+    name: "zeta.example.com"
+    sourcePath: ".configuration.validatingWebhookConfiguration.webhooks[0]"
+    configurationKind: ValidatingWebhookConfiguration
+    determination: determinate
+    outcome: called
+    terminalReasons:
+      - MATCH_CONDITIONS_TRUE
+    trace:
+      - sequence: 0
+        stage: "rules"
+        sourcePath: ".configuration.validatingWebhookConfiguration.webhooks[0].rules"
+        result: match
+        reasonCode: RULE_MATCH
+        terminal: false
+        pending: false
+        discarded: false
+        inputSummary:
+          "operation": "CREATE"
+          "resource": "deployments"
+      - sequence: 1
+        stage: "matchConditions"
+        sourcePath: ".configuration.validatingWebhookConfiguration.webhooks[0].matchConditions"
+        result: true
+        reasonCode: MATCH_CONDITIONS_TRUE
+        terminal: true
+        pending: false
+        discarded: false
+        inputSummary: {}
+    diagnostics:
+      - sourcePath: ".a"
+        code: CAPABILITY_OUTSIDE_PROFILE
+        severity: info
+        message: "evaluation scope is limited"
+        unsupportedCapability: "negotiation" ("not evaluated")
+      - sourcePath: ".z"
+        code: CAPABILITY_OUTSIDE_PROFILE
+        severity: info
+        message: "evaluation scope is limited"
+        unsupportedCapability: "transport" ("no network request was made")
+  - index: 1
+    name: "alpha.example.com"
+    sourcePath: ".configuration.validatingWebhookConfiguration.webhooks[1]"
+    configurationKind: ValidatingWebhookConfiguration
+    determination: determinate
+    outcome: skipped
+    terminalReasons:
+      - RULE_NO_MATCH
+    trace:
+      - sequence: 0
+        stage: "rules"
+        sourcePath: ".configuration.validatingWebhookConfiguration.webhooks[1].rules"
+        result: no-match
+        reasonCode: RULE_NO_MATCH
+        terminal: true
+        pending: false
+        discarded: false
+        inputSummary: null
+    diagnostics: null
+diagnostics:
+  - sourcePath: ".scope.a"
+    code: CAPABILITY_OUTSIDE_PROFILE
+    severity: info
+    message: "evaluation scope is limited"
+    unsupportedCapability: "patch chain" ("not evaluated")
+  - sourcePath: ".scope.z"
+    code: CAPABILITY_OUTSIDE_PROFILE
+    severity: info
+    message: "evaluation scope is limited"
+    unsupportedCapability: "reinvocation" ("not evaluated")

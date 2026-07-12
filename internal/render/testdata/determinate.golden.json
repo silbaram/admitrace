@@ -1,0 +1,114 @@
+{
+  "schemaVersion": "admitrace.result/v1alpha1",
+  "scenarioId": "determinate-case",
+  "compatibilityProfile": {
+    "id": "kubernetes-1.36.2-defaults",
+    "kubernetesVersion": "1.36.2",
+    "featureGatePolicy": "kubernetes-defaults"
+  },
+  "evaluationPhase": "snapshot-routing",
+  "configurationKind": "ValidatingWebhookConfiguration",
+  "webhooks": [
+    {
+      "configurationKind": "ValidatingWebhookConfiguration",
+      "webhookName": "zeta.example.com",
+      "webhookIndex": 0,
+      "sourcePath": ".configuration.validatingWebhookConfiguration.webhooks[0]",
+      "determination": "determinate",
+      "outcome": "called",
+      "trace": [
+        {
+          "stage": "rules",
+          "sequence": 0,
+          "sourcePath": ".configuration.validatingWebhookConfiguration.webhooks[0].rules",
+          "inputSummary": {
+            "operation": "CREATE",
+            "resource": "deployments"
+          },
+          "result": "match",
+          "reasonCode": "RULE_MATCH",
+          "terminal": false,
+          "pending": false,
+          "discarded": false
+        },
+        {
+          "stage": "matchConditions",
+          "sequence": 1,
+          "sourcePath": ".configuration.validatingWebhookConfiguration.webhooks[0].matchConditions",
+          "inputSummary": {},
+          "result": "true",
+          "reasonCode": "MATCH_CONDITIONS_TRUE",
+          "terminal": true,
+          "pending": false,
+          "discarded": false
+        }
+      ],
+      "diagnostics": [
+        {
+          "code": "CAPABILITY_OUTSIDE_PROFILE",
+          "severity": "info",
+          "message": "evaluation scope is limited",
+          "sourcePath": ".a",
+          "unsupportedCapability": {
+            "capability": "negotiation",
+            "detail": "not evaluated"
+          }
+        },
+        {
+          "code": "CAPABILITY_OUTSIDE_PROFILE",
+          "severity": "info",
+          "message": "evaluation scope is limited",
+          "sourcePath": ".z",
+          "unsupportedCapability": {
+            "capability": "transport",
+            "detail": "no network request was made"
+          }
+        }
+      ]
+    },
+    {
+      "configurationKind": "ValidatingWebhookConfiguration",
+      "webhookName": "alpha.example.com",
+      "webhookIndex": 1,
+      "sourcePath": ".configuration.validatingWebhookConfiguration.webhooks[1]",
+      "determination": "determinate",
+      "outcome": "skipped",
+      "trace": [
+        {
+          "stage": "rules",
+          "sequence": 0,
+          "sourcePath": ".configuration.validatingWebhookConfiguration.webhooks[1].rules",
+          "inputSummary": null,
+          "result": "no-match",
+          "reasonCode": "RULE_NO_MATCH",
+          "terminal": true,
+          "pending": false,
+          "discarded": false
+        }
+      ],
+      "diagnostics": null
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "CAPABILITY_OUTSIDE_PROFILE",
+      "severity": "info",
+      "message": "evaluation scope is limited",
+      "sourcePath": ".scope.a",
+      "unsupportedCapability": {
+        "capability": "patch chain",
+        "detail": "not evaluated"
+      }
+    },
+    {
+      "code": "CAPABILITY_OUTSIDE_PROFILE",
+      "severity": "info",
+      "message": "evaluation scope is limited",
+      "sourcePath": ".scope.z",
+      "unsupportedCapability": {
+        "capability": "reinvocation",
+        "detail": "not evaluated"
+      }
+    }
+  ]
+}
