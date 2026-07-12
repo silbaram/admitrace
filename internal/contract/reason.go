@@ -23,6 +23,14 @@ const (
 	ReasonCodeMatchConditionTrue ReasonCode = "MATCH_CONDITION_TRUE"
 	// ReasonCodeNamespaceContextMissing identifies required namespace fixture context that was not supplied.
 	ReasonCodeNamespaceContextMissing ReasonCode = "NAMESPACE_CONTEXT_MISSING"
+	// ReasonCodeNamespaceSelectorMatch identifies a namespace selector that matched the request namespace.
+	ReasonCodeNamespaceSelectorMatch ReasonCode = "NAMESPACE_SELECTOR_MATCH"
+	// ReasonCodeNamespaceSelectorNoMatch identifies a namespace selector that did not match the request namespace.
+	ReasonCodeNamespaceSelectorNoMatch ReasonCode = "NAMESPACE_SELECTOR_NO_MATCH"
+	// ReasonCodeObjectSelectorMatch identifies an object selector that matched object or oldObject.
+	ReasonCodeObjectSelectorMatch ReasonCode = "OBJECT_SELECTOR_MATCH"
+	// ReasonCodeObjectSelectorNoMatch identifies an object selector that matched neither object nor oldObject.
+	ReasonCodeObjectSelectorNoMatch ReasonCode = "OBJECT_SELECTOR_NO_MATCH"
 	// ReasonCodeRuleMatch identifies a rule that matched the admission request.
 	ReasonCodeRuleMatch ReasonCode = "RULE_MATCH"
 	// ReasonCodeRuleNoMatch identifies a rule or rule collection that did not match the admission request.
@@ -75,6 +83,10 @@ var reasonCodeRegistry = [...]ReasonDefinition{
 	{Code: ReasonCodeMatchConditionsTrue, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeMatchConditionTrue, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeNamespaceContextMissing, Disposition: ReasonDispositionCompleted},
+	{Code: ReasonCodeNamespaceSelectorMatch, Disposition: ReasonDispositionCompleted},
+	{Code: ReasonCodeNamespaceSelectorNoMatch, Disposition: ReasonDispositionCompleted},
+	{Code: ReasonCodeObjectSelectorMatch, Disposition: ReasonDispositionCompleted},
+	{Code: ReasonCodeObjectSelectorNoMatch, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeRuleMatch, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeRuleNoMatch, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeStageNotRun, Disposition: ReasonDispositionNotRun},
