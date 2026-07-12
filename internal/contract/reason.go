@@ -5,12 +5,16 @@ package contract
 type ReasonCode string
 
 const (
+	// ReasonCodeAdmissionConfigurationExcluded identifies Kubernetes admission configuration self-exclusion.
+	ReasonCodeAdmissionConfigurationExcluded ReasonCode = "ADMISSION_CONFIGURATION_EXCLUDED"
 	// ReasonCodeCapabilityOutsideProfile identifies semantics outside the selected compatibility profile.
 	ReasonCodeCapabilityOutsideProfile ReasonCode = "CAPABILITY_OUTSIDE_PROFILE"
 	// ReasonCodeEvaluationProblemDiscarded identifies a previously pending evaluation problem that no longer controls the result.
 	ReasonCodeEvaluationProblemDiscarded ReasonCode = "EVALUATION_PROBLEM_DISCARDED"
 	// ReasonCodeEvaluationProblemPending identifies an evaluation problem whose terminal effect is not yet known.
 	ReasonCodeEvaluationProblemPending ReasonCode = "EVALUATION_PROBLEM_PENDING"
+	// ReasonCodeEquivalenceContextMissing identifies required equivalence fixture context that was not supplied.
+	ReasonCodeEquivalenceContextMissing ReasonCode = "EQUIVALENCE_CONTEXT_MISSING"
 	// ReasonCodeInternalError identifies a failure of an internal invariant or operation.
 	ReasonCodeInternalError ReasonCode = "INTERNAL_ERROR"
 	// ReasonCodeInvalidInput identifies input that does not satisfy the evaluation contract.
@@ -74,9 +78,11 @@ type ReasonDefinition struct {
 }
 
 var reasonCodeRegistry = [...]ReasonDefinition{
+	{Code: ReasonCodeAdmissionConfigurationExcluded, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeCapabilityOutsideProfile, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeEvaluationProblemDiscarded, Disposition: ReasonDispositionDiscarded},
 	{Code: ReasonCodeEvaluationProblemPending, Disposition: ReasonDispositionPending},
+	{Code: ReasonCodeEquivalenceContextMissing, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeInternalError, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeInvalidInput, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeKubernetesEvaluationError, Disposition: ReasonDispositionCompleted},

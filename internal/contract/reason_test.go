@@ -12,9 +12,11 @@ func TestReasonCodeRegistry(t *testing.T) {
 	t.Parallel()
 
 	want := []contract.ReasonDefinition{
+		{Code: contract.ReasonCodeAdmissionConfigurationExcluded, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeCapabilityOutsideProfile, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeEvaluationProblemDiscarded, Disposition: contract.ReasonDispositionDiscarded},
 		{Code: contract.ReasonCodeEvaluationProblemPending, Disposition: contract.ReasonDispositionPending},
+		{Code: contract.ReasonCodeEquivalenceContextMissing, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeInternalError, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeInvalidInput, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeKubernetesEvaluationError, Disposition: contract.ReasonDispositionCompleted},
