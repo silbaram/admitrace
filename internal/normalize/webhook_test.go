@@ -156,6 +156,8 @@ func TestWebhooksDeepCopiesMutableRoutingFields(t *testing.T) {
 		webhook.NamespaceSelector.MatchExpressions[0].Values[0] = "changed"
 		webhook.ObjectSelector.MatchLabels["selected"] = "changed"
 		webhook.MatchConditions[0].Expression = "false"
+		*webhook.SideEffects = admissionregistrationv1.SideEffectClassSome
+		webhook.AdmissionReviewVersions[0] = "v2"
 
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("normalized webhooks changed with input: got %#v, want %#v", got, want)
@@ -181,6 +183,8 @@ func TestWebhooksDeepCopiesMutableRoutingFields(t *testing.T) {
 		got[0].NamespaceSelector.MatchExpressions[0].Values[0] = "changed"
 		got[0].ObjectSelector.MatchLabels["selected"] = "changed"
 		got[0].MatchConditions[0].Expression = "false"
+		*got[0].SideEffects = admissionregistrationv1.SideEffectClassSome
+		got[0].AdmissionReviewVersions[0] = "v2"
 
 		if !reflect.DeepEqual(configuration, want) {
 			t.Errorf("input changed with normalized result: got %#v, want %#v", configuration, want)
@@ -248,17 +252,20 @@ func TestWebhooksRejectsImpossibleOneOfAndMissingDefaults(t *testing.T) {
 }
 
 type routingFields struct {
-	rules             []admissionregistrationv1.RuleWithOperations
-	matchPolicy       *admissionregistrationv1.MatchPolicyType
-	namespaceSelector *metav1.LabelSelector
-	objectSelector    *metav1.LabelSelector
-	matchConditions   []admissionregistrationv1.MatchCondition
-	failurePolicy     *admissionregistrationv1.FailurePolicyType
+	rules                   []admissionregistrationv1.RuleWithOperations
+	matchPolicy             *admissionregistrationv1.MatchPolicyType
+	namespaceSelector       *metav1.LabelSelector
+	objectSelector          *metav1.LabelSelector
+	matchConditions         []admissionregistrationv1.MatchCondition
+	failurePolicy           *admissionregistrationv1.FailurePolicyType
+	sideEffects             *admissionregistrationv1.SideEffectClass
+	admissionReviewVersions []string
 }
 
 func newRoutingFields() routingFields {
 	matchPolicy := admissionregistrationv1.Exact
 	failurePolicy := admissionregistrationv1.Ignore
+	sideEffects := admissionregistrationv1.SideEffectClassNone
 	namespacedScope := admissionregistrationv1.NamespacedScope
 	allScopes := admissionregistrationv1.AllScopes
 	return routingFields{
@@ -294,7 +301,9 @@ func newRoutingFields() routingFields {
 			{Name: "first-check", Expression: "request.operation == 'CREATE'"},
 			{Name: "second-check", Expression: "object != null"},
 		},
-		failurePolicy: &failurePolicy,
+		failurePolicy:           &failurePolicy,
+		sideEffects:             &sideEffects,
+		admissionReviewVersions: []string{"v1", "v1beta1"},
 	}
 }
 
@@ -307,13 +316,15 @@ func newValidatingConfiguration(names ...string) *kube136.ValidatingWebhookConfi
 	for i, name := range names {
 		fields := newRoutingFields()
 		configuration.Webhooks[i] = admissionregistrationv1.ValidatingWebhook{
-			Name:              name,
-			Rules:             fields.rules,
-			MatchPolicy:       fields.matchPolicy,
-			NamespaceSelector: fields.namespaceSelector,
-			ObjectSelector:    fields.objectSelector,
-			MatchConditions:   fields.matchConditions,
-			FailurePolicy:     fields.failurePolicy,
+			Name:                    name,
+			Rules:                   fields.rules,
+			MatchPolicy:             fields.matchPolicy,
+			NamespaceSelector:       fields.namespaceSelector,
+			ObjectSelector:          fields.objectSelector,
+			MatchConditions:         fields.matchConditions,
+			FailurePolicy:           fields.failurePolicy,
+			SideEffects:             fields.sideEffects,
+			AdmissionReviewVersions: fields.admissionReviewVersions,
 		}
 	}
 	return configuration
@@ -328,13 +339,15 @@ func newMutatingConfiguration(names ...string) *kube136.MutatingWebhookConfigura
 	for i, name := range names {
 		fields := newRoutingFields()
 		configuration.Webhooks[i] = admissionregistrationv1.MutatingWebhook{
-			Name:              name,
-			Rules:             fields.rules,
-			MatchPolicy:       fields.matchPolicy,
-			NamespaceSelector: fields.namespaceSelector,
-			ObjectSelector:    fields.objectSelector,
-			MatchConditions:   fields.matchConditions,
-			FailurePolicy:     fields.failurePolicy,
+			Name:                    name,
+			Rules:                   fields.rules,
+			MatchPolicy:             fields.matchPolicy,
+			NamespaceSelector:       fields.namespaceSelector,
+			ObjectSelector:          fields.objectSelector,
+			MatchConditions:         fields.matchConditions,
+			FailurePolicy:           fields.failurePolicy,
+			SideEffects:             fields.sideEffects,
+			AdmissionReviewVersions: fields.admissionReviewVersions,
 		}
 	}
 	return configuration

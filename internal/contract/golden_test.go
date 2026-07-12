@@ -262,6 +262,7 @@ func newGoldenContract() goldenContract {
 			},
 			EvaluationPhases: []contract.EvaluationPhase{
 				contract.EvaluationPhaseSnapshotRouting,
+				contract.EvaluationPhaseMutatingInitialSnapshot,
 			},
 			Determinations: []contract.Determination{
 				contract.DeterminationDeterminate,

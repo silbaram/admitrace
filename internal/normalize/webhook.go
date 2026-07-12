@@ -17,16 +17,18 @@ const (
 // NormalizedWebhook contains the common routing inputs shared by validating
 // and mutating admission webhooks.
 type NormalizedWebhook struct {
-	ConfigurationKind contract.ConfigurationKind
-	Name              string
-	InputIndex        int
-	SourcePath        string
-	Rules             []Rule
-	MatchPolicy       admissionregistrationv1.MatchPolicyType
-	NamespaceSelector *metav1.LabelSelector
-	ObjectSelector    *metav1.LabelSelector
-	MatchConditions   []admissionregistrationv1.MatchCondition
-	FailurePolicy     admissionregistrationv1.FailurePolicyType
+	ConfigurationKind       contract.ConfigurationKind
+	Name                    string
+	InputIndex              int
+	SourcePath              string
+	Rules                   []Rule
+	MatchPolicy             admissionregistrationv1.MatchPolicyType
+	NamespaceSelector       *metav1.LabelSelector
+	ObjectSelector          *metav1.LabelSelector
+	MatchConditions         []admissionregistrationv1.MatchCondition
+	FailurePolicy           admissionregistrationv1.FailurePolicyType
+	SideEffects             *admissionregistrationv1.SideEffectClass
+	AdmissionReviewVersions []string
 }
 
 // Rule is a pointer-free normalized admission routing rule.
@@ -53,13 +55,15 @@ func Webhooks(configuration contract.WebhookConfiguration) ([]NormalizedWebhook,
 		for i := range webhooks {
 			webhook := &webhooks[i]
 			normalized, err := normalizeWebhook(kind, i, validatingWebhookPath, webhookInput{
-				name:              webhook.Name,
-				rules:             webhook.Rules,
-				matchPolicy:       webhook.MatchPolicy,
-				namespaceSelector: webhook.NamespaceSelector,
-				objectSelector:    webhook.ObjectSelector,
-				matchConditions:   webhook.MatchConditions,
-				failurePolicy:     webhook.FailurePolicy,
+				name:                    webhook.Name,
+				rules:                   webhook.Rules,
+				matchPolicy:             webhook.MatchPolicy,
+				namespaceSelector:       webhook.NamespaceSelector,
+				objectSelector:          webhook.ObjectSelector,
+				matchConditions:         webhook.MatchConditions,
+				failurePolicy:           webhook.FailurePolicy,
+				sideEffects:             webhook.SideEffects,
+				admissionReviewVersions: webhook.AdmissionReviewVersions,
 			})
 			if err != nil {
 				return nil, err
@@ -73,13 +77,15 @@ func Webhooks(configuration contract.WebhookConfiguration) ([]NormalizedWebhook,
 		for i := range webhooks {
 			webhook := &webhooks[i]
 			normalized, err := normalizeWebhook(kind, i, mutatingWebhookPath, webhookInput{
-				name:              webhook.Name,
-				rules:             webhook.Rules,
-				matchPolicy:       webhook.MatchPolicy,
-				namespaceSelector: webhook.NamespaceSelector,
-				objectSelector:    webhook.ObjectSelector,
-				matchConditions:   webhook.MatchConditions,
-				failurePolicy:     webhook.FailurePolicy,
+				name:                    webhook.Name,
+				rules:                   webhook.Rules,
+				matchPolicy:             webhook.MatchPolicy,
+				namespaceSelector:       webhook.NamespaceSelector,
+				objectSelector:          webhook.ObjectSelector,
+				matchConditions:         webhook.MatchConditions,
+				failurePolicy:           webhook.FailurePolicy,
+				sideEffects:             webhook.SideEffects,
+				admissionReviewVersions: webhook.AdmissionReviewVersions,
 			})
 			if err != nil {
 				return nil, err
@@ -93,13 +99,15 @@ func Webhooks(configuration contract.WebhookConfiguration) ([]NormalizedWebhook,
 }
 
 type webhookInput struct {
-	name              string
-	rules             []admissionregistrationv1.RuleWithOperations
-	matchPolicy       *admissionregistrationv1.MatchPolicyType
-	namespaceSelector *metav1.LabelSelector
-	objectSelector    *metav1.LabelSelector
-	matchConditions   []admissionregistrationv1.MatchCondition
-	failurePolicy     *admissionregistrationv1.FailurePolicyType
+	name                    string
+	rules                   []admissionregistrationv1.RuleWithOperations
+	matchPolicy             *admissionregistrationv1.MatchPolicyType
+	namespaceSelector       *metav1.LabelSelector
+	objectSelector          *metav1.LabelSelector
+	matchConditions         []admissionregistrationv1.MatchCondition
+	failurePolicy           *admissionregistrationv1.FailurePolicyType
+	sideEffects             *admissionregistrationv1.SideEffectClass
+	admissionReviewVersions []string
 }
 
 func normalizeWebhook(
@@ -126,17 +134,27 @@ func normalizeWebhook(
 	}
 
 	return NormalizedWebhook{
-		ConfigurationKind: kind,
-		Name:              input.name,
-		InputIndex:        index,
-		SourcePath:        sourcePath,
-		Rules:             rules,
-		MatchPolicy:       *input.matchPolicy,
-		NamespaceSelector: cloneSelector(input.namespaceSelector),
-		ObjectSelector:    cloneSelector(input.objectSelector),
-		MatchConditions:   cloneSlice(input.matchConditions),
-		FailurePolicy:     *input.failurePolicy,
+		ConfigurationKind:       kind,
+		Name:                    input.name,
+		InputIndex:              index,
+		SourcePath:              sourcePath,
+		Rules:                   rules,
+		MatchPolicy:             *input.matchPolicy,
+		NamespaceSelector:       cloneSelector(input.namespaceSelector),
+		ObjectSelector:          cloneSelector(input.objectSelector),
+		MatchConditions:         cloneSlice(input.matchConditions),
+		FailurePolicy:           *input.failurePolicy,
+		SideEffects:             cloneValue(input.sideEffects),
+		AdmissionReviewVersions: cloneSlice(input.admissionReviewVersions),
 	}, nil
+}
+
+func cloneValue[T any](input *T) *T {
+	if input == nil {
+		return nil
+	}
+	result := *input
+	return &result
 }
 
 func makeNormalizedWebhooks[T any](input []T) []NormalizedWebhook {

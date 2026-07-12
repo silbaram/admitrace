@@ -15,7 +15,8 @@
       "MutatingWebhookConfiguration"
     ],
     "evaluationPhases": [
-      "snapshot-routing"
+      "snapshot-routing",
+      "mutating-initial-snapshot-eligibility"
     ],
     "determinations": [
       "determinate",

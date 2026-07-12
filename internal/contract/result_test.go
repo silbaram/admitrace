@@ -12,6 +12,7 @@ func TestResultVocabulary(t *testing.T) {
 
 	for _, phase := range []contract.EvaluationPhase{
 		contract.EvaluationPhaseSnapshotRouting,
+		contract.EvaluationPhaseMutatingInitialSnapshot,
 	} {
 		if !phase.IsValid() {
 			t.Errorf("EvaluationPhase(%q).IsValid() = false, want true", phase)
@@ -76,6 +77,32 @@ func TestResultVocabulary(t *testing.T) {
 	}
 	if contract.DiagnosticSeverity("fatal").IsValid() {
 		t.Error("DiagnosticSeverity(fatal).IsValid() = true, want false")
+	}
+}
+
+func TestEvaluationResultRequiresConfigurationPhase(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		kind  contract.ConfigurationKind
+		phase contract.EvaluationPhase
+		valid bool
+	}{
+		{name: "validating snapshot", kind: contract.ConfigurationKindValidating, phase: contract.EvaluationPhaseSnapshotRouting, valid: true},
+		{name: "mutating initial snapshot", kind: contract.ConfigurationKindMutating, phase: contract.EvaluationPhaseMutatingInitialSnapshot, valid: true},
+		{name: "mutating generic snapshot", kind: contract.ConfigurationKindMutating, phase: contract.EvaluationPhaseSnapshotRouting},
+		{name: "validating mutating phase", kind: contract.ConfigurationKindValidating, phase: contract.EvaluationPhaseMutatingInitialSnapshot},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := contract.EvaluationResult{ConfigurationKind: test.kind, EvaluationPhase: test.phase}
+			err := result.Validate()
+			gotValid := err == nil
+			if gotValid != test.valid {
+				t.Errorf("Validate() valid = %t, want %t (error = %v)", gotValid, test.valid, err)
+			}
+		})
 	}
 }
 

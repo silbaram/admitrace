@@ -6,13 +6,16 @@ import "fmt"
 type EvaluationPhase string
 
 const (
-	// EvaluationPhaseSnapshotRouting evaluates call eligibility from one supplied snapshot.
+	// EvaluationPhaseSnapshotRouting evaluates validating call eligibility from one supplied snapshot.
 	EvaluationPhaseSnapshotRouting EvaluationPhase = "snapshot-routing"
+	// EvaluationPhaseMutatingInitialSnapshot evaluates mutating webhook eligibility
+	// before any webhook patch or reinvocation could change the request.
+	EvaluationPhaseMutatingInitialSnapshot EvaluationPhase = "mutating-initial-snapshot-eligibility"
 )
 
 // IsValid reports whether phase belongs to the evaluation phase vocabulary.
 func (phase EvaluationPhase) IsValid() bool {
-	return phase == EvaluationPhaseSnapshotRouting
+	return phase == EvaluationPhaseSnapshotRouting || phase == EvaluationPhaseMutatingInitialSnapshot
 }
 
 // Determination identifies whether evaluation completed within the supported contract.
@@ -134,6 +137,12 @@ type EvaluationResult struct {
 // Validate checks result vocabulary and the invariants of every nested evaluation.
 func (result EvaluationResult) Validate() error {
 	if !result.EvaluationPhase.IsValid() {
+		return &ValidationError{Field: "evaluationPhase", Value: string(result.EvaluationPhase), Err: ErrInvalidEnumValue}
+	}
+	if result.ConfigurationKind == ConfigurationKindMutating && result.EvaluationPhase != EvaluationPhaseMutatingInitialSnapshot {
+		return &ValidationError{Field: "evaluationPhase", Value: string(result.EvaluationPhase), Err: ErrInvalidEnumValue}
+	}
+	if result.ConfigurationKind == ConfigurationKindValidating && result.EvaluationPhase != EvaluationPhaseSnapshotRouting {
 		return &ValidationError{Field: "evaluationPhase", Value: string(result.EvaluationPhase), Err: ErrInvalidEnumValue}
 	}
 	for i, evaluation := range result.Webhooks {
