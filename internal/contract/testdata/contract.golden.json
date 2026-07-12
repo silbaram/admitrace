@@ -1,0 +1,334 @@
+{
+  "versions": {
+    "scenarioAPIVersion": "admitrace.io/v1alpha1",
+    "scenarioKind": "Scenario",
+    "resultSchemaVersion": "admitrace.result/v1alpha1",
+    "compatibilityProfile": {
+      "id": "kubernetes-1.36.2-defaults",
+      "kubernetesVersion": "1.36.2",
+      "featureGatePolicy": "kubernetes-defaults"
+    }
+  },
+  "vocabularies": {
+    "configurationKinds": [
+      "ValidatingWebhookConfiguration",
+      "MutatingWebhookConfiguration"
+    ],
+    "evaluationPhases": [
+      "snapshot-routing"
+    ],
+    "determinations": [
+      "determinate",
+      "indeterminate",
+      "unsupported"
+    ],
+    "outcomes": [
+      "called",
+      "skipped",
+      "rejected-before-call"
+    ],
+    "traceResults": [
+      "match",
+      "no-match",
+      "true",
+      "false",
+      "error",
+      "indeterminate",
+      "unsupported",
+      "not-run"
+    ],
+    "diagnosticSeverities": [
+      "info",
+      "warning",
+      "error"
+    ],
+    "authorizationVerdicts": [
+      "allow",
+      "deny",
+      "no-opinion",
+      "error"
+    ],
+    "featureGatePolicies": [
+      "kubernetes-defaults"
+    ]
+  },
+  "configurationVariants": [
+    {
+      "validatingWebhookConfiguration": {
+        "kind": "ValidatingWebhookConfiguration",
+        "apiVersion": "admissionregistration.k8s.io/v1",
+        "metadata": {
+          "name": "routing.example.io"
+        }
+      }
+    },
+    {
+      "mutatingWebhookConfiguration": {
+        "kind": "MutatingWebhookConfiguration",
+        "apiVersion": "admissionregistration.k8s.io/v1",
+        "metadata": {
+          "name": "mutation.example.io"
+        }
+      }
+    }
+  ],
+  "scenario": {
+    "apiVersion": "admitrace.io/v1alpha1",
+    "kind": "Scenario",
+    "metadata": {
+      "name": "update-widget"
+    },
+    "compatibilityProfile": {
+      "id": "kubernetes-1.36.2-defaults",
+      "kubernetesVersion": "1.36.2",
+      "featureGatePolicy": "kubernetes-defaults"
+    },
+    "configuration": {
+      "validatingWebhookConfiguration": {
+        "kind": "ValidatingWebhookConfiguration",
+        "apiVersion": "admissionregistration.k8s.io/v1",
+        "metadata": {
+          "name": "routing.example.io"
+        }
+      }
+    },
+    "request": {
+      "uid": "request-001",
+      "kind": {
+        "group": "example.io",
+        "version": "v1",
+        "kind": "Widget"
+      },
+      "resource": {
+        "group": "example.io",
+        "version": "v1",
+        "resource": "widgets"
+      },
+      "name": "demo",
+      "namespace": "test",
+      "operation": "UPDATE",
+      "scope": "Namespaced",
+      "userInfo": {
+        "username": "alice",
+        "groups": [
+          "developers",
+          "system:authenticated"
+        ],
+        "extra": {
+          "scopes": [
+            "edit",
+            "read"
+          ]
+        }
+      },
+      "object": {
+        "apiVersion": "example.io/v1",
+        "kind": "Widget",
+        "metadata": {
+          "name": "demo",
+          "namespace": "test"
+        },
+        "spec": {
+          "replicas": 2,
+          "extension": {
+            "enabled": true
+          }
+        }
+      },
+      "oldObject": null,
+      "dryRun": false,
+      "options": {
+        "apiVersion": "meta.k8s.io/v1",
+        "kind": "UpdateOptions",
+        "fieldManager": "admitrace"
+      }
+    },
+    "externalContext": {
+      "namespace": {
+        "kind": "Namespace",
+        "apiVersion": "v1",
+        "metadata": {
+          "name": "test",
+          "labels": {
+            "environment": "test",
+            "team": "platform"
+          }
+        },
+        "spec": {},
+        "status": {}
+      },
+      "authorization": [
+        {
+          "query": {
+            "resource": {
+              "verb": "update",
+              "apiGroup": "example.io",
+              "apiVersion": "v1",
+              "resource": "widgets",
+              "namespace": "test",
+              "name": "demo"
+            }
+          },
+          "verdict": "allow",
+          "reason": "fixture grants widget updates"
+        },
+        {
+          "query": {
+            "nonResource": {
+              "verb": "get",
+              "path": "/healthz"
+            }
+          },
+          "verdict": "no-opinion"
+        }
+      ],
+      "equivalence": [
+        {
+          "request": {
+            "gvr": {
+              "group": "example.io",
+              "version": "v1",
+              "resource": "widgets"
+            }
+          },
+          "equivalents": [
+            {
+              "gvr": {
+                "group": "example.io",
+                "version": "v1beta1",
+                "resource": "widgets"
+              },
+              "gvk": {
+                "group": "example.io",
+                "version": "v1beta1",
+                "kind": "Widget"
+              }
+            },
+            {
+              "gvr": {
+                "group": "example.io",
+                "version": "v1alpha1",
+                "resource": "widgets"
+              },
+              "gvk": {
+                "group": "example.io",
+                "version": "v1alpha1",
+                "kind": "Widget"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "expectations": [
+      {
+        "webhookName": "accept.example.io",
+        "determination": "determinate",
+        "outcome": "called",
+        "terminalReasonCode": "MATCH_CONDITIONS_TRUE"
+      },
+      {
+        "webhookName": "context.example.io",
+        "determination": "indeterminate"
+      }
+    ]
+  },
+  "result": {
+    "schemaVersion": "admitrace.result/v1alpha1",
+    "scenarioId": "update-widget",
+    "compatibilityProfile": {
+      "id": "kubernetes-1.36.2-defaults",
+      "kubernetesVersion": "1.36.2",
+      "featureGatePolicy": "kubernetes-defaults"
+    },
+    "evaluationPhase": "snapshot-routing",
+    "configurationKind": "ValidatingWebhookConfiguration",
+    "webhooks": [
+      {
+        "configurationKind": "ValidatingWebhookConfiguration",
+        "webhookName": "accept.example.io",
+        "webhookIndex": 0,
+        "sourcePath": ".configuration.validatingWebhookConfiguration.webhooks[0]",
+        "determination": "determinate",
+        "outcome": "called",
+        "trace": [
+          {
+            "stage": "rules",
+            "sequence": 0,
+            "sourcePath": ".configuration.validatingWebhookConfiguration.webhooks[0].rules[0]",
+            "inputSummary": {
+              "operation": "UPDATE",
+              "resource": "example.io/v1/widgets"
+            },
+            "result": "match",
+            "reasonCode": "RULE_MATCH",
+            "terminal": false,
+            "pending": false,
+            "discarded": false
+          },
+          {
+            "stage": "matchConditions",
+            "sequence": 1,
+            "sourcePath": ".configuration.validatingWebhookConfiguration.webhooks[0].matchConditions[0]",
+            "inputSummary": {
+              "expression": "redacted",
+              "name": "authorized"
+            },
+            "result": "true",
+            "reasonCode": "MATCH_CONDITION_TRUE",
+            "terminal": true,
+            "pending": false,
+            "discarded": false
+          }
+        ],
+        "diagnostics": []
+      },
+      {
+        "configurationKind": "ValidatingWebhookConfiguration",
+        "webhookName": "context.example.io",
+        "webhookIndex": 1,
+        "sourcePath": ".configuration.validatingWebhookConfiguration.webhooks[1]",
+        "determination": "indeterminate",
+        "trace": [
+          {
+            "stage": "namespaceSelector",
+            "sequence": 0,
+            "sourcePath": ".configuration.validatingWebhookConfiguration.webhooks[1].namespaceSelector",
+            "inputSummary": {
+              "namespace": "test"
+            },
+            "result": "indeterminate",
+            "reasonCode": "NAMESPACE_CONTEXT_MISSING",
+            "terminal": true,
+            "pending": false,
+            "discarded": false
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "NAMESPACE_CONTEXT_MISSING",
+            "severity": "error",
+            "message": "namespace fixture is required",
+            "sourcePath": ".externalContext.namespace",
+            "missingContext": {
+              "context": "namespace",
+              "reference": "test"
+            }
+          }
+        ]
+      }
+    ],
+    "diagnostics": [
+      {
+        "code": "CAPABILITY_OUTSIDE_PROFILE",
+        "severity": "warning",
+        "message": "capability is outside the selected profile",
+        "sourcePath": ".configuration.validatingWebhookConfiguration.webhooks[1]",
+        "unsupportedCapability": {
+          "capability": "custom-feature-gate",
+          "detail": "only Kubernetes default feature gates are supported"
+        }
+      }
+    ]
+  }
+}
