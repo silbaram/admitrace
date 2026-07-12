@@ -15,7 +15,7 @@ if [ -n "$root_module_references" ]; then
 	exit 1
 fi
 
-dependency_packages=$(go list -deps -test -f '{{.ImportPath}}' ./...)
+dependency_packages=$(go list -buildvcs=false -deps -test -f '{{.ImportPath}}' ./...)
 root_dependency_packages=$(
 	printf '%s\n' "$dependency_packages" |
 		grep -E '^k8s\.io/kubernetes(/|$)' || true
