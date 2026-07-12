@@ -22,6 +22,7 @@ func TestReasonCodeRegistry(t *testing.T) {
 		{Code: contract.ReasonCodeMatchConditionTrue, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeNamespaceContextMissing, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeRuleMatch, Disposition: contract.ReasonDispositionCompleted},
+		{Code: contract.ReasonCodeRuleNoMatch, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeStageNotRun, Disposition: contract.ReasonDispositionNotRun},
 	}
 

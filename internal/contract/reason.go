@@ -25,6 +25,8 @@ const (
 	ReasonCodeNamespaceContextMissing ReasonCode = "NAMESPACE_CONTEXT_MISSING"
 	// ReasonCodeRuleMatch identifies a rule that matched the admission request.
 	ReasonCodeRuleMatch ReasonCode = "RULE_MATCH"
+	// ReasonCodeRuleNoMatch identifies a rule or rule collection that did not match the admission request.
+	ReasonCodeRuleNoMatch ReasonCode = "RULE_NO_MATCH"
 	// ReasonCodeStageNotRun identifies a routing stage that was never evaluated.
 	ReasonCodeStageNotRun ReasonCode = "STAGE_NOT_RUN"
 )
@@ -74,6 +76,7 @@ var reasonCodeRegistry = [...]ReasonDefinition{
 	{Code: ReasonCodeMatchConditionTrue, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeNamespaceContextMissing, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeRuleMatch, Disposition: ReasonDispositionCompleted},
+	{Code: ReasonCodeRuleNoMatch, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeStageNotRun, Disposition: ReasonDispositionNotRun},
 }
 
