@@ -157,6 +157,56 @@ func TestEvaluateDryRunSideEffectsIsUnsupported(t *testing.T) {
 	}
 }
 
+func TestEvaluateAuthorizationSelectorDiagnosticIsUnsupported(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		expression string
+	}{
+		{
+			name:       "field selector",
+			expression: "authorizer.group('apps').resource('deployments').fieldSelector('metadata.name=demo').check('list').allowed()",
+		},
+		{
+			name:       "label selector",
+			expression: "authorizer.group('apps').resource('deployments').labelSelector('app=demo').check('list').allowed()",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			for _, failurePolicy := range []admissionregistrationv1.FailurePolicyType{
+				admissionregistrationv1.Fail,
+				admissionregistrationv1.Ignore,
+			} {
+				t.Run(string(failurePolicy), func(t *testing.T) {
+					webhook := testWebhook(
+						contract.ConfigurationKindValidating,
+						0,
+						"selector-authz.example.com",
+						test.expression,
+					)
+					webhook.FailurePolicy = failurePolicy
+					got := evaluation.NewEvaluator().Evaluate(
+						context.Background(),
+						testSnapshot(t, contract.ConfigurationKindValidating, []normalize.NormalizedWebhook{webhook}),
+					).Webhooks[0]
+
+					assertOutcome(t, got, contract.DeterminationUnsupported, nil)
+					assertTerminal(t, got.Trace, contract.TraceResultUnsupported, contract.ReasonCodeCapabilityOutsideProfile)
+					assertCapabilityDiagnostic(t, got.Diagnostics, "authorization queries with field or label selectors")
+					if got.Diagnostics[0].Code != contract.ReasonCodeCapabilityOutsideProfile {
+						t.Errorf("diagnostic code = %q, want %q", got.Diagnostics[0].Code, contract.ReasonCodeCapabilityOutsideProfile)
+					}
+					if err := got.Validate(); err != nil {
+						t.Errorf("Validate() error = %v", err)
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestEvaluateCalledIsEligibilityNotTransportClaim(t *testing.T) {
 	t.Parallel()
 

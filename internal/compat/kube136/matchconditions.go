@@ -35,6 +35,8 @@ const (
 	MatchConditionProblemCost MatchConditionProblem = "cost"
 	// MatchConditionProblemAuthorization identifies an explicit fixture authorizer error.
 	MatchConditionProblemAuthorization MatchConditionProblem = "authorization"
+	// MatchConditionProblemAuthorizationUnsupported identifies an authorizer query outside the fixture contract.
+	MatchConditionProblemAuthorizationUnsupported MatchConditionProblem = "authorization-unsupported"
 	// MatchConditionProblemAuthorizationMissing identifies an absent fixture authorizer decision.
 	MatchConditionProblemAuthorizationMissing MatchConditionProblem = "authorization-missing"
 )
@@ -54,6 +56,8 @@ const (
 	MatchConditionDecisionReject MatchConditionDecision = "reject"
 	// MatchConditionDecisionIndeterminate indicates a required fixture decision was missing.
 	MatchConditionDecisionIndeterminate MatchConditionDecision = "indeterminate"
+	// MatchConditionDecisionUnsupported indicates an authorizer query requires unsupported fixture semantics.
+	MatchConditionDecisionUnsupported MatchConditionDecision = "unsupported"
 )
 
 // MatchConditionObservation records one condition's raw Kubernetes CEL result.

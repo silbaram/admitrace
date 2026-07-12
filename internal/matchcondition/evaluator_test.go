@@ -232,6 +232,106 @@ func TestEvaluateMatchConditionsMissingAuthorizationIsIndeterminate(t *testing.T
 	}
 }
 
+func TestEvaluateMatchConditionsAuthorizationSelectorsAreUnsupported(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		expression string
+	}{
+		{
+			name:       "field selector",
+			expression: "authorizer.group('apps').resource('deployments').fieldSelector('metadata.name=demo').check('list').allowed()",
+		},
+		{
+			name:       "label selector",
+			expression: "authorizer.group('apps').resource('deployments').labelSelector('app=demo').check('list').allowed()",
+		},
+	}
+
+	evaluator := matchcondition.NewEvaluator()
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			for _, failurePolicy := range []admissionregistrationv1.FailurePolicyType{
+				admissionregistrationv1.Fail,
+				admissionregistrationv1.Ignore,
+			} {
+				t.Run(string(failurePolicy), func(t *testing.T) {
+					got := evaluator.Evaluate(
+						context.Background(),
+						testWebhook(
+							[]admissionregistrationv1.MatchCondition{{Name: test.name, Expression: test.expression}},
+							failurePolicy,
+						),
+						testRequest(),
+						testInvocation(),
+						mustAuthorizer(t, nil),
+					)
+					if got.Determination != contract.DeterminationUnsupported || got.Outcome != nil {
+						t.Errorf("Evaluate() determination/outcome = (%q, %#v), want unsupported without outcome", got.Determination, got.Outcome)
+					}
+					if got.ReasonCode != contract.ReasonCodeCapabilityOutsideProfile {
+						t.Errorf("Evaluate() ReasonCode = %q, want %q", got.ReasonCode, contract.ReasonCodeCapabilityOutsideProfile)
+					}
+					if !errors.Is(got.Err, contract.ErrUnsupportedCapability) || errors.Is(got.Err, contract.ErrKubernetesEvaluation) {
+						t.Errorf("Evaluate() error = %v, want only ErrUnsupportedCapability", got.Err)
+					}
+					assertTerminalSummary(t, got.Trace, contract.TraceResultUnsupported, contract.ReasonCodeCapabilityOutsideProfile)
+				})
+			}
+		})
+	}
+}
+
+func TestEvaluateMatchConditionsAuthorizationErrorStillUsesFailurePolicy(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		failurePolicy admissionregistrationv1.FailurePolicyType
+		wantOutcome   contract.Outcome
+	}{
+		{failurePolicy: admissionregistrationv1.Fail, wantOutcome: contract.OutcomeRejectedBeforeCall},
+		{failurePolicy: admissionregistrationv1.Ignore, wantOutcome: contract.OutcomeSkipped},
+	}
+	for _, test := range tests {
+		t.Run(string(test.failurePolicy), func(t *testing.T) {
+			got := matchcondition.NewEvaluator().Evaluate(
+				context.Background(),
+				testWebhook(
+					[]admissionregistrationv1.MatchCondition{{Name: "authorization", Expression: authorizationExpression()}},
+					test.failurePolicy,
+				),
+				testRequest(),
+				testInvocation(),
+				mustAuthorizer(t, []contract.AuthorizationDecision{authorizationDecision(contract.AuthorizationVerdictError)}),
+			)
+			assertDeterminateResult(t, got, test.wantOutcome, contract.ReasonCodeCELAuthorizationError, 2, true)
+			if !errors.Is(got.Err, contract.ErrKubernetesEvaluation) || errors.Is(got.Err, contract.ErrUnsupportedCapability) {
+				t.Errorf("Evaluate() error = %v, want only ErrKubernetesEvaluation", got.Err)
+			}
+		})
+	}
+}
+
+func TestEvaluateMatchConditionsFalseOverridesUnsupportedAuthorization(t *testing.T) {
+	t.Parallel()
+
+	got := matchcondition.NewEvaluator().Evaluate(
+		context.Background(),
+		testWebhook(
+			[]admissionregistrationv1.MatchCondition{
+				{Name: "unsupported", Expression: "authorizer.group('apps').resource('deployments').fieldSelector('metadata.name=demo').check('list').allowed()"},
+				{Name: "false", Expression: "false"},
+			},
+			admissionregistrationv1.Fail,
+		),
+		testRequest(),
+		testInvocation(),
+		mustAuthorizer(t, nil),
+	)
+	assertDeterminateResult(t, got, contract.OutcomeSkipped, contract.ReasonCodeMatchConditionFalse, 3, false)
+}
+
 func TestEvaluateMatchConditionsFalseOverridesMissingAuthorization(t *testing.T) {
 	t.Parallel()
 

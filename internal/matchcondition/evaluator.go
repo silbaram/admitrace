@@ -87,16 +87,25 @@ func (e Evaluator) Evaluate(
 		authorizer,
 		settings.costBudget,
 	)
-	raw = preserveMissingContext(raw)
+	raw = preserveAuthorizationContext(raw)
 	return explainResult(webhook, raw)
 }
 
-func preserveMissingContext(raw kube136.MatchConditionsResult) kube136.MatchConditionsResult {
+func preserveAuthorizationContext(raw kube136.MatchConditionsResult) kube136.MatchConditionsResult {
 	missingIndex := -1
+	unsupportedIndex := -1
 	for i := range raw.Observations {
 		observation := &raw.Observations[i]
-		if observation.Problem == kube136.MatchConditionProblemAuthorization &&
-			errors.Is(observation.Err, contract.ErrMissingContext) {
+		if observation.Problem != kube136.MatchConditionProblemAuthorization {
+			continue
+		}
+		switch {
+		case errors.Is(observation.Err, contract.ErrUnsupportedCapability):
+			observation.Problem = kube136.MatchConditionProblemAuthorizationUnsupported
+			if unsupportedIndex < 0 {
+				unsupportedIndex = i
+			}
+		case errors.Is(observation.Err, contract.ErrMissingContext):
 			observation.Problem = kube136.MatchConditionProblemAuthorizationMissing
 			if missingIndex < 0 {
 				missingIndex = i
@@ -104,8 +113,15 @@ func preserveMissingContext(raw kube136.MatchConditionsResult) kube136.MatchCond
 		}
 	}
 	// An independent false condition is sufficient to skip the webhook even
-	// when another authorizer query lacked fixture context.
-	if missingIndex >= 0 && raw.Decision != kube136.MatchConditionDecisionSkipFalse {
+	// when another authorizer query is missing or unsupported.
+	if raw.Decision == kube136.MatchConditionDecisionSkipFalse {
+		return raw
+	}
+	if unsupportedIndex >= 0 {
+		raw.Decision = kube136.MatchConditionDecisionUnsupported
+		raw.ControllingIndex = unsupportedIndex
+		raw.Err = raw.Observations[unsupportedIndex].Err
+	} else if missingIndex >= 0 {
 		raw.Decision = kube136.MatchConditionDecisionIndeterminate
 		raw.ControllingIndex = missingIndex
 		raw.Err = raw.Observations[missingIndex].Err
@@ -209,6 +225,11 @@ func explainResult(
 		result.ReasonCode = contract.ReasonCodeAuthorizationContextMissing
 		result.Err = raw.Err
 		result.Trace = append(result.Trace, summaryStep(webhook, raw, contract.TraceResultIndeterminate, result.ReasonCode))
+	case kube136.MatchConditionDecisionUnsupported:
+		result.Determination = contract.DeterminationUnsupported
+		result.ReasonCode = contract.ReasonCodeCapabilityOutsideProfile
+		result.Err = raw.Err
+		result.Trace = append(result.Trace, summaryStep(webhook, raw, contract.TraceResultUnsupported, result.ReasonCode))
 	default:
 		return internalProblem(webhook.SourcePath+".matchConditions", fmt.Errorf("unknown compatibility decision %q", raw.Decision))
 	}
@@ -222,7 +243,9 @@ func observationStep(
 ) contract.TraceStep {
 	result := contract.TraceResultError
 	reason := problemReason(observation.Problem)
-	if observation.Problem == kube136.MatchConditionProblemAuthorizationMissing {
+	if observation.Problem == kube136.MatchConditionProblemAuthorizationUnsupported {
+		result = contract.TraceResultUnsupported
+	} else if observation.Problem == kube136.MatchConditionProblemAuthorizationMissing {
 		result = contract.TraceResultIndeterminate
 	} else if observation.Value != nil {
 		if *observation.Value {
@@ -295,6 +318,8 @@ func problemReason(problem kube136.MatchConditionProblem) contract.ReasonCode {
 		return contract.ReasonCodeCELCostBudgetExceeded
 	case kube136.MatchConditionProblemAuthorization:
 		return contract.ReasonCodeCELAuthorizationError
+	case kube136.MatchConditionProblemAuthorizationUnsupported:
+		return contract.ReasonCodeCapabilityOutsideProfile
 	case kube136.MatchConditionProblemAuthorizationMissing:
 		return contract.ReasonCodeAuthorizationContextMissing
 	default:
