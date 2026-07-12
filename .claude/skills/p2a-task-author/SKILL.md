@@ -1,6 +1,6 @@
 ---
 name: p2a-task-author
-description: Plan2Agent 컨텍스트 묶음에서 Gate C 작업 그래프 초안을 작성하여 에이전트가 작업을 제안하고 사용자가 승인하게 할 때 사용합니다.
+description: Use when authoring a Gate C task graph draft from a Plan2Agent context bundle so an agent proposes tasks and a human approves them at the gate.
 ---
 
 # Plan2Agent Task Author

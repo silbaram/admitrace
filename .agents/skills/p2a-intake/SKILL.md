@@ -1,6 +1,6 @@
 ---
 name: p2a-intake
-description: 한 문장으로 된 Plan2Agent 제품 아이디어에서 요구사항, 가정, 확인 질문과 사용자 결정 사항을 추출할 때 사용합니다.
+description: Use when extracting requirements, assumptions, and clarification questions from a one-sentence Plan2Agent product idea.
 ---
 
 # Plan2Agent Intake

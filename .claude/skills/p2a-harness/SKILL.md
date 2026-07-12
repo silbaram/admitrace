@@ -1,6 +1,6 @@
 ---
 name: p2a-harness
-description: 한 문장으로 된 제품 아이디어를 단계별 승인 절차를 거쳐 초기 요구사항, 제품·구현 명세, 작업 그래프, 검토 보고서로 구체화할 때 사용합니다.
+description: Use when turning a one-sentence product idea into a gated Plan2Agent intake, spec, implementation plan, task graph, and review report.
 ---
 
 # Plan2Agent Harness

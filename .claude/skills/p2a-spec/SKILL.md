@@ -1,6 +1,6 @@
 ---
 name: p2a-spec
-description: Plan2Agent 초기 요구사항 정리 결과와 사용자 답변을 제품 명세와 구현 명세로 변환할 때 사용합니다.
+description: Use when converting Plan2Agent intake output and user answers into product and implementation specs.
 ---
 
 # Plan2Agent Spec

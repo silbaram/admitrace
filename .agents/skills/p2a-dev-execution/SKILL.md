@@ -1,6 +1,6 @@
 ---
 name: p2a-dev-execution
-description: 기획 산출물은 변경하지 않고, 실행 준비가 끝난 Plan2Agent 작업 하나를 실제 코드로 구현하고 실행 기록을 남길 때 사용합니다.
+description: Use when implementing a single ready Plan2Agent task into real code changes and recording the run, without touching planning artifacts.
 ---
 
 # Plan2Agent Dev Execution
@@ -49,6 +49,8 @@ Codex write-capable runs use native `workspace-write` sandbox confinement inside
    node .plan2agent/scripts/p2a_execute.mjs start --artifacts <dir> --task <id> --agent-tool codex --isolation worktree --worktree <fresh-worktree-path> --create-isolation
    ```
 
+   Preserve one run identity across start retries. An explicit `--run-id` always wins. When `project.config.json.runTracking.runIdStrategy` is `task-sequence`, omit `--run-id` on the first start so the CLI atomically reserves the next id from `runIdPattern`; if isolation setup fails, correct the cause and use the printed retry command with that same explicit id. Do not invoke a fresh implicit start after failure because it intentionally allocates the next attempt id. Projects that keep the default `timestamp` strategy retain timestamp-based ids.
+
    Use `p2a_execute start`, not raw `p2a_runs start`, because it creates the run and marks the task `in_progress` in one lifecycle step. If the task requires independent monitor evidence, pass `--require-monitor` so the run records a monitor gate requirement.
 
    The worktree path must be a fresh empty path, following the `project.config.json` `runTracking.worktreePattern` convention (for example, `../.worktrees/<taskId>-<runId>`).
@@ -73,6 +75,14 @@ Codex write-capable runs use native `workspace-write` sandbox confinement inside
    `p2a_runs verify` must execute the configured or explicitly requested verification commands and capture their exit codes as `source: config` or `source: command`. Do not self-report verification with a manual record; do not use `source: manual` or `exitCode: null` as a substitute for executed verification.
 
    If the user provides explicit verification commands, pass them through as explicit commands such as `--test-command`, `--lint-command`, or `--typecheck-command`. Config-only verification flags such as `--test`, `--lint`, and `--typecheck` auto-detect project commands when config is empty, then skip only if no command can be detected. Use explicit commands whenever config is empty and real verification is required.
+
+   For supplemental `--verify-command` checks, use only the supported verification types `test`, `lint`, `typecheck`, and `custom`. Record checks outside the three primary types with the `custom:<command>` form:
+
+   ```bash
+   node .plan2agent/scripts/p2a_runs.mjs verify --run-id <id> --artifacts <dir> --verify-command 'custom:git diff --check'
+   ```
+
+   Do not invent labels such as `format:`, `repeatability:`, or `dependency-policy:` as metadata. An unrecognized prefix remains part of the executable command, so `format:npm run format:check` attempts to execute that full string as a custom command. A failed or unavailable verification record is immutable evidence; correct the syntax and start a new retry run instead of rewriting the original record.
 
 7. Run the independent monitor gate before finish when the run was started with `--require-monitor`. Invoke `p2a-performance-monitor` as a separate subagent when the CLI supports spawning subagents, or perform a separated read-only review pass when spawning is unavailable. Pass the target task id, acceptance criteria, and the latest run log for that task, including `verification`, `changedFiles`, `status`, and `workspaceRef`.
 

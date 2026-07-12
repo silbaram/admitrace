@@ -1,6 +1,6 @@
 ---
 name: p2a-review
-description: Plan2Agent 제품·구현 명세나 작업 그래프를 검토하여 누락된 결정과 실행 위험을 찾을 때 사용합니다.
+description: Use when reviewing a Plan2Agent spec, implementation plan, or task graph for missing decisions and execution risk.
 ---
 
 # Plan2Agent Review

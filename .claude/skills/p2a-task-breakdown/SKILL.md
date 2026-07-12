@@ -1,6 +1,6 @@
 ---
 name: p2a-task-breakdown
-description: 승인된 Plan2Agent 구현 명세를 작업 간 의존 관계가 명확한 작업 그래프로 나눌 때 사용합니다.
+description: Use when splitting an approved Plan2Agent implementation spec into a dependency-aware task graph.
 ---
 
 # Plan2Agent Task Breakdown
