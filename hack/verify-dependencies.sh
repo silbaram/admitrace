@@ -15,16 +15,14 @@ if [ -n "$root_module_references" ]; then
 	exit 1
 fi
 
-root_imports=$(
-	grep -R -n -E \
-		--include='*.go' \
-		--exclude-dir='.git' \
-		--exclude-dir='.tools' \
-		'"k8s\.io/kubernetes(/[^"[:space:]]*)?"' . || true
+dependency_packages=$(go list -deps -test -f '{{.ImportPath}}' ./...)
+root_dependency_packages=$(
+	printf '%s\n' "$dependency_packages" |
+		grep -E '^k8s\.io/kubernetes(/|$)' || true
 )
-if [ -n "$root_imports" ]; then
-	printf '%s\n' 'forbidden k8s.io/kubernetes import found:' >&2
-	printf '%s\n' "$root_imports" >&2
+if [ -n "$root_dependency_packages" ]; then
+	printf '%s\n' 'forbidden k8s.io/kubernetes dependency package found:' >&2
+	printf '%s\n' "$root_dependency_packages" >&2
 	exit 1
 fi
 
