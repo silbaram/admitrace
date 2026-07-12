@@ -176,10 +176,33 @@ type WebhookExpectation struct {
 	WebhookName        string        `json:"webhookName"`
 	Determination      Determination `json:"determination"`
 	Outcome            *Outcome      `json:"outcome,omitempty"`
-	TerminalReasonCode string        `json:"terminalReasonCode,omitempty"`
+	TerminalReasonCode ReasonCode    `json:"terminalReasonCode,omitempty"`
 }
 
-// ValidateOutcome checks the determination/outcome invariant for the expectation.
+// ValidateOutcome permits a determinate expectation to omit the optional outcome assertion.
 func (expectation WebhookExpectation) ValidateOutcome() error {
-	return validateOutcome(expectation.Determination, expectation.Outcome)
+	if !expectation.Determination.IsValid() {
+		return &ValidationError{Field: "determination", Value: string(expectation.Determination), Err: ErrInvalidEnumValue}
+	}
+	if expectation.Outcome == nil {
+		return nil
+	}
+	if expectation.Determination != DeterminationDeterminate {
+		return &ValidationError{Field: "outcome", Value: string(*expectation.Outcome), Err: ErrOutcomeRequiresDeterminate}
+	}
+	if !expectation.Outcome.IsValid() {
+		return &ValidationError{Field: "outcome", Value: string(*expectation.Outcome), Err: ErrInvalidEnumValue}
+	}
+	return nil
+}
+
+// Validate checks expectation vocabulary while preserving optional assertions.
+func (expectation WebhookExpectation) Validate() error {
+	if err := expectation.ValidateOutcome(); err != nil {
+		return err
+	}
+	if expectation.TerminalReasonCode != "" && !expectation.TerminalReasonCode.IsRegistered() {
+		return &ValidationError{Field: "terminalReasonCode", Value: string(expectation.TerminalReasonCode), Err: ErrUnregisteredReasonCode}
+	}
+	return nil
 }

@@ -159,7 +159,7 @@ func newGoldenContract() goldenContract {
 				WebhookName:        "accept.example.io",
 				Determination:      contract.DeterminationDeterminate,
 				Outcome:            &called,
-				TerminalReasonCode: "MATCH_CONDITIONS_TRUE",
+				TerminalReasonCode: contract.ReasonCodeMatchConditionsTrue,
 			},
 			{
 				WebhookName:   "context.example.io",
@@ -189,7 +189,7 @@ func newGoldenContract() goldenContract {
 						SourcePath:   ".configuration.validatingWebhookConfiguration.webhooks[0].rules[0]",
 						InputSummary: contract.InputSummary{"operation": "UPDATE", "resource": "example.io/v1/widgets"},
 						Result:       contract.TraceResultMatch,
-						ReasonCode:   "RULE_MATCH",
+						ReasonCode:   contract.ReasonCodeRuleMatch,
 					},
 					{
 						Stage:        "matchConditions",
@@ -197,7 +197,7 @@ func newGoldenContract() goldenContract {
 						SourcePath:   ".configuration.validatingWebhookConfiguration.webhooks[0].matchConditions[0]",
 						InputSummary: contract.InputSummary{"expression": "redacted", "name": "authorized"},
 						Result:       contract.TraceResultTrue,
-						ReasonCode:   "MATCH_CONDITION_TRUE",
+						ReasonCode:   contract.ReasonCodeMatchConditionTrue,
 						Terminal:     true,
 					},
 				},
@@ -216,13 +216,13 @@ func newGoldenContract() goldenContract {
 						SourcePath:   ".configuration.validatingWebhookConfiguration.webhooks[1].namespaceSelector",
 						InputSummary: contract.InputSummary{"namespace": "test"},
 						Result:       contract.TraceResultIndeterminate,
-						ReasonCode:   "NAMESPACE_CONTEXT_MISSING",
+						ReasonCode:   contract.ReasonCodeNamespaceContextMissing,
 						Terminal:     true,
 					},
 				},
 				Diagnostics: []contract.Diagnostic{
 					{
-						Code:       "NAMESPACE_CONTEXT_MISSING",
+						Code:       contract.ReasonCodeNamespaceContextMissing,
 						Severity:   contract.DiagnosticSeverityError,
 						Message:    "namespace fixture is required",
 						SourcePath: ".externalContext.namespace",
@@ -236,7 +236,7 @@ func newGoldenContract() goldenContract {
 		},
 		Diagnostics: []contract.Diagnostic{
 			{
-				Code:       "CAPABILITY_OUTSIDE_PROFILE",
+				Code:       contract.ReasonCodeCapabilityOutsideProfile,
 				Severity:   contract.DiagnosticSeverityWarning,
 				Message:    "capability is outside the selected profile",
 				SourcePath: ".configuration.validatingWebhookConfiguration.webhooks[1]",

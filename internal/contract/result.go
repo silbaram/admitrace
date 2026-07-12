@@ -1,9 +1,6 @@
 package contract
 
-import "errors"
-
-// ErrOutcomeRequiresDeterminate indicates an outcome attached to an incomplete evaluation.
-var ErrOutcomeRequiresDeterminate = errors.New("outcome requires a determinate evaluation")
+import "fmt"
 
 // EvaluationPhase identifies the semantic phase represented by a result.
 type EvaluationPhase string
@@ -12,6 +9,11 @@ const (
 	// EvaluationPhaseSnapshotRouting evaluates call eligibility from one supplied snapshot.
 	EvaluationPhaseSnapshotRouting EvaluationPhase = "snapshot-routing"
 )
+
+// IsValid reports whether phase belongs to the evaluation phase vocabulary.
+func (phase EvaluationPhase) IsValid() bool {
+	return phase == EvaluationPhaseSnapshotRouting
+}
 
 // Determination identifies whether evaluation completed within the supported contract.
 type Determination string
@@ -25,6 +27,16 @@ const (
 	DeterminationUnsupported Determination = "unsupported"
 )
 
+// IsValid reports whether determination belongs to the determination vocabulary.
+func (determination Determination) IsValid() bool {
+	switch determination {
+	case DeterminationDeterminate, DeterminationIndeterminate, DeterminationUnsupported:
+		return true
+	default:
+		return false
+	}
+}
+
 // Outcome identifies a completed admission webhook routing result.
 type Outcome string
 
@@ -36,6 +48,16 @@ const (
 	// OutcomeRejectedBeforeCall indicates that failure policy rejects the request before a call.
 	OutcomeRejectedBeforeCall Outcome = "rejected-before-call"
 )
+
+// IsValid reports whether outcome belongs to the outcome vocabulary.
+func (outcome Outcome) IsValid() bool {
+	switch outcome {
+	case OutcomeCalled, OutcomeSkipped, OutcomeRejectedBeforeCall:
+		return true
+	default:
+		return false
+	}
+}
 
 // TraceResult identifies the result of one trace step.
 type TraceResult string
@@ -59,6 +81,23 @@ const (
 	TraceResultNotRun TraceResult = "not-run"
 )
 
+// IsValid reports whether result belongs to the trace result vocabulary.
+func (result TraceResult) IsValid() bool {
+	switch result {
+	case TraceResultMatch,
+		TraceResultNoMatch,
+		TraceResultTrue,
+		TraceResultFalse,
+		TraceResultError,
+		TraceResultIndeterminate,
+		TraceResultUnsupported,
+		TraceResultNotRun:
+		return true
+	default:
+		return false
+	}
+}
+
 // DiagnosticSeverity identifies the importance of a diagnostic.
 type DiagnosticSeverity string
 
@@ -71,6 +110,16 @@ const (
 	DiagnosticSeverityError DiagnosticSeverity = "error"
 )
 
+// IsValid reports whether severity belongs to the diagnostic severity vocabulary.
+func (severity DiagnosticSeverity) IsValid() bool {
+	switch severity {
+	case DiagnosticSeverityInfo, DiagnosticSeverityWarning, DiagnosticSeverityError:
+		return true
+	default:
+		return false
+	}
+}
+
 // EvaluationResult is the versioned canonical result for one Scenario.
 type EvaluationResult struct {
 	SchemaVersion        string               `json:"schemaVersion"`
@@ -80,6 +129,24 @@ type EvaluationResult struct {
 	ConfigurationKind    ConfigurationKind    `json:"configurationKind"`
 	Webhooks             []WebhookEvaluation  `json:"webhooks"`
 	Diagnostics          []Diagnostic         `json:"diagnostics"`
+}
+
+// Validate checks result vocabulary and the invariants of every nested evaluation.
+func (result EvaluationResult) Validate() error {
+	if !result.EvaluationPhase.IsValid() {
+		return &ValidationError{Field: "evaluationPhase", Value: string(result.EvaluationPhase), Err: ErrInvalidEnumValue}
+	}
+	for i, evaluation := range result.Webhooks {
+		if err := evaluation.Validate(); err != nil {
+			return fmt.Errorf("webhooks[%d]: %w", i, err)
+		}
+	}
+	for i, diagnostic := range result.Diagnostics {
+		if err := diagnostic.Validate(); err != nil {
+			return fmt.Errorf("diagnostics[%d]: %w", i, err)
+		}
+	}
+	return nil
 }
 
 // WebhookEvaluation is the ordered canonical result for one configured webhook.
@@ -94,14 +161,63 @@ type WebhookEvaluation struct {
 	Diagnostics       []Diagnostic      `json:"diagnostics"`
 }
 
-// ValidateOutcome checks that an incomplete evaluation does not carry an outcome.
+// ValidateOutcome checks the mandatory determination and outcome relationship.
 func (evaluation WebhookEvaluation) ValidateOutcome() error {
-	return validateOutcome(evaluation.Determination, evaluation.Outcome)
+	return validateEvaluationOutcome(evaluation.Determination, evaluation.Outcome)
 }
 
-func validateOutcome(determination Determination, outcome *Outcome) error {
-	if determination != DeterminationDeterminate && outcome != nil {
-		return ErrOutcomeRequiresDeterminate
+// Validate checks vocabulary, outcome, diagnostic, and terminal trace invariants.
+func (evaluation WebhookEvaluation) Validate() error {
+	if !evaluation.Determination.IsValid() {
+		return &ValidationError{Field: "determination", Value: string(evaluation.Determination), Err: ErrInvalidEnumValue}
+	}
+	if err := evaluation.ValidateOutcome(); err != nil {
+		return err
+	}
+
+	terminalCount := 0
+	for i, step := range evaluation.Trace {
+		if err := step.Validate(); err != nil {
+			return fmt.Errorf("trace[%d]: %w", i, err)
+		}
+		if step.Terminal {
+			terminalCount++
+			if err := validateTerminalResult(evaluation.Determination, step.Result); err != nil {
+				return fmt.Errorf("trace[%d]: %w", i, err)
+			}
+		}
+	}
+	if evaluation.Determination == DeterminationDeterminate {
+		switch {
+		case terminalCount == 0:
+			return &ValidationError{Field: "trace", Err: ErrTerminalTraceRequired}
+		case terminalCount > 1:
+			return &ValidationError{Field: "trace", Value: fmt.Sprintf("%d terminal steps", terminalCount), Err: ErrMultipleTerminalTraceSteps}
+		}
+	}
+	for i, diagnostic := range evaluation.Diagnostics {
+		if err := diagnostic.Validate(); err != nil {
+			return fmt.Errorf("diagnostics[%d]: %w", i, err)
+		}
+	}
+	return nil
+}
+
+func validateEvaluationOutcome(determination Determination, outcome *Outcome) error {
+	if !determination.IsValid() {
+		return &ValidationError{Field: "determination", Value: string(determination), Err: ErrInvalidEnumValue}
+	}
+	if determination == DeterminationDeterminate {
+		if outcome == nil {
+			return &ValidationError{Field: "outcome", Err: ErrDeterminateRequiresOutcome}
+		}
+		if !outcome.IsValid() {
+			return &ValidationError{Field: "outcome", Value: string(*outcome), Err: ErrInvalidEnumValue}
+		}
+		return nil
+	}
+	if outcome != nil {
+		return &ValidationError{Field: "outcome", Value: string(*outcome), Err: ErrOutcomeRequiresDeterminate}
 	}
 	return nil
 }
@@ -116,20 +232,84 @@ type TraceStep struct {
 	SourcePath   string       `json:"sourcePath"`
 	InputSummary InputSummary `json:"inputSummary"`
 	Result       TraceResult  `json:"result"`
-	ReasonCode   string       `json:"reasonCode"`
+	ReasonCode   ReasonCode   `json:"reasonCode"`
 	Terminal     bool         `json:"terminal"`
 	Pending      bool         `json:"pending"`
 	Discarded    bool         `json:"discarded"`
 }
 
+// Validate checks trace vocabulary and makes pending, discarded, and not-run states unambiguous.
+func (step TraceStep) Validate() error {
+	if !step.Result.IsValid() {
+		return &ValidationError{Field: "result", Value: string(step.Result), Err: ErrInvalidEnumValue}
+	}
+	definition, ok := reasonDefinition(step.ReasonCode)
+	if !ok {
+		return &ValidationError{Field: "reasonCode", Value: string(step.ReasonCode), Err: ErrUnregisteredReasonCode}
+	}
+	if step.Pending && step.Discarded {
+		return &ValidationError{Field: "pending/discarded", Err: ErrInvalidTraceState}
+	}
+	if step.Terminal && (step.Pending || step.Discarded || step.Result == TraceResultNotRun) {
+		return &ValidationError{Field: "terminal", Err: ErrInvalidTraceState}
+	}
+
+	validState := false
+	switch definition.Disposition {
+	case ReasonDispositionCompleted:
+		validState = !step.Pending && !step.Discarded && step.Result != TraceResultNotRun
+	case ReasonDispositionPending:
+		validState = step.Pending && !step.Discarded && isDeferredProblemResult(step.Result)
+	case ReasonDispositionDiscarded:
+		validState = !step.Pending && step.Discarded && isDeferredProblemResult(step.Result)
+	case ReasonDispositionNotRun:
+		validState = !step.Pending && !step.Discarded && step.Result == TraceResultNotRun
+	}
+	if !validState {
+		return &ValidationError{Field: "traceState", Value: string(definition.Disposition), Err: ErrInvalidTraceState}
+	}
+	return nil
+}
+
+func isDeferredProblemResult(result TraceResult) bool {
+	return result == TraceResultError || result == TraceResultIndeterminate
+}
+
 // Diagnostic describes a stable, source-addressable evaluation concern.
 type Diagnostic struct {
-	Code                  string                       `json:"code"`
+	Code                  ReasonCode                   `json:"code"`
 	Severity              DiagnosticSeverity           `json:"severity"`
 	Message               string                       `json:"message"`
 	SourcePath            string                       `json:"sourcePath"`
 	MissingContext        *MissingContextDetail        `json:"missingContext,omitempty"`
 	UnsupportedCapability *UnsupportedCapabilityDetail `json:"unsupportedCapability,omitempty"`
+}
+
+// Validate checks diagnostic vocabulary independently from display wording.
+func (diagnostic Diagnostic) Validate() error {
+	if !diagnostic.Code.IsRegistered() {
+		return &ValidationError{Field: "code", Value: string(diagnostic.Code), Err: ErrUnregisteredReasonCode}
+	}
+	if !diagnostic.Severity.IsValid() {
+		return &ValidationError{Field: "severity", Value: string(diagnostic.Severity), Err: ErrInvalidEnumValue}
+	}
+	return nil
+}
+
+func validateTerminalResult(determination Determination, result TraceResult) error {
+	valid := false
+	switch determination {
+	case DeterminationDeterminate:
+		valid = result != TraceResultIndeterminate && result != TraceResultUnsupported && result != TraceResultNotRun
+	case DeterminationIndeterminate:
+		valid = result == TraceResultIndeterminate
+	case DeterminationUnsupported:
+		valid = result == TraceResultUnsupported
+	}
+	if valid {
+		return nil
+	}
+	return &ValidationError{Field: "terminal.result", Value: string(result), Err: ErrInvalidTraceState}
 }
 
 // MissingContextDetail identifies fixture context required to complete evaluation.
