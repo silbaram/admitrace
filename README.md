@@ -9,6 +9,23 @@ It evaluates `ValidatingWebhookConfiguration` and `MutatingWebhookConfiguration`
 > [!IMPORTANT]
 > In AdmiTrace, `called` means that a Webhook was **selected for invocation** by the supported routing pipeline. It does not mean that an HTTP/TLS request was sent or that the Webhook returned a successful response.
 
+## Installation
+
+Install the tagged release with Go:
+
+```bash
+go install github.com/silbaram/admitrace/cmd/admitrace@v0.1.0
+```
+
+Make sure `$(go env GOPATH)/bin` (or `GOBIN`) is on `PATH`, then verify the installation:
+
+```bash
+admitrace version
+admitrace --help
+```
+
+Release source: [`v0.1.0`](https://github.com/silbaram/admitrace/tree/v0.1.0)
+
 ## Documentation
 
 - [Quickstart](docs/quickstart.md): build the CLI, run the validating and mutating examples, and add expectation checks to CI.
