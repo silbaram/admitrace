@@ -1,0 +1,59 @@
+apiVersion: admitrace.io/v1alpha1
+kind: Scenario
+metadata:
+  name: mutating-configmap-update
+compatibilityProfile:
+  id: kubernetes-1.36.2-defaults
+  kubernetesVersion: 1.36.2
+  featureGatePolicy: kubernetes-defaults
+configuration:
+  mutatingWebhookConfiguration:
+    apiVersion: admissionregistration.k8s.io/v1
+    kind: MutatingWebhookConfiguration
+    metadata:
+      name: mutating-example
+    webhooks:
+      - name: configmaps.example.admitrace.io
+        failurePolicy: Fail
+        matchPolicy: Exact
+        sideEffects: None
+        admissionReviewVersions: [v1]
+        rules:
+          - operations: [UPDATE]
+            apiGroups: [""]
+            apiVersions: [v1]
+            resources: [configmaps]
+            scope: Namespaced
+request:
+  uid: mutating-example
+  kind:
+    group: ""
+    version: v1
+    kind: ConfigMap
+  resource:
+    group: ""
+    version: v1
+    resource: configmaps
+  name: demo
+  namespace: default
+  operation: UPDATE
+  scope: Namespaced
+  userInfo:
+    username: fixture-user
+  object:
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: demo
+      namespace: default
+  oldObject:
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: demo
+      namespace: default
+expectations:
+  - webhookName: configmaps.example.admitrace.io
+    determination: determinate
+    outcome: called
+    terminalReasonCode: MATCH_CONDITIONS_TRUE

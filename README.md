@@ -9,11 +9,16 @@ It evaluates `ValidatingWebhookConfiguration` and `MutatingWebhookConfiguration`
 > [!IMPORTANT]
 > In AdmiTrace, `called` means that a Webhook was **selected for invocation** by the supported routing pipeline. It does not mean that an HTTP/TLS request was sent or that the Webhook returned a successful response.
 
+## Documentation
+
+- [Quickstart](docs/quickstart.md): build the CLI, run the validating and mutating examples, and add expectation checks to CI.
+- [Scenario and result reference](docs/reference.md): schemas, reason codes, exit codes, support policy, and explicit non-goals.
+
 ## Project status
 
-The repository currently implements the decision core from the Scenario contract through the integrated snapshot evaluator. The canonical renderer, user-facing `version`, `explain`, and `test` commands, and the Kubernetes envtest parity suite are still under development.
+The repository implements the offline decision core, canonical text and JSON rendering, the `version`, `explain`, and `test` commands, safety guardrails, and a Kubernetes `1.36.2` envtest parity gate.
 
-AdmiTrace is therefore not yet a finished CLI product or a live-cluster operations tool. The project currently prioritizes semantic accuracy, explainability, and parity verification.
+AdmiTrace is not a live-cluster operations tool. The current release scope prioritizes semantic accuracy, explainability, and reproducible parity over transport or adapter integrations.
 
 ## Core capabilities
 
@@ -72,8 +77,11 @@ AdmiTrace does not currently perform the following operations:
 - Simulating `reinvocationPolicy`
 - Querying live Namespace, authorization, or API discovery state
 - Negotiating `AdmissionReviewVersions` or guaranteeing transport success
+- Simulating kube-apiserver dry-run pre-call rejection; unsupported `dryRun` and `sideEffects` combinations remain `unsupported`
+- Capturing a live request snapshot from a cluster
 - Testing timeouts, certificates, network failures, performance, or load
 - Approximating behavior for unverified Kubernetes versions
+- Providing a stable public Go API, JUnit XML, or project-specific adapters
 
 ## Development environment
 
@@ -90,8 +98,11 @@ cd admitrace
 
 go test ./...
 go vet ./...
+mkdir -p ./build
 go build -o ./build/admitrace ./cmd/admitrace
 ./build/admitrace --help
+./build/admitrace explain --file docs/examples/validating.yaml
+./build/admitrace --output json test docs/examples
 ```
 
 Verify the Kubernetes dependency boundary with:
@@ -144,10 +155,6 @@ Kubernetes-version-specific code is isolated behind `internal/compat/kube136`. T
 - Do not copy Secret payloads or authorization identities into diagnostics.
 - Do not use the `k8s.io/kubernetes` root module as a production dependency.
 
-## Roadmap
+## Version policy
 
-- Canonical JSON and text renderers
-- `version`, `explain`, and `test` CLI commands
-- Input limits, redaction, fuzzing, and offline guardrails
-- Kubernetes `1.36.2` envtest oracle and parity matrix
-- User documentation, real-world Webhook validation, and v0.1 release readiness
+The profile `kubernetes-1.36.2-defaults` means exactly Kubernetes `1.36.2` with that release's default feature gates. A new Kubernetes version requires a separate compatibility profile and exact-version parity evidence; it is never routed through the existing profile by approximation.

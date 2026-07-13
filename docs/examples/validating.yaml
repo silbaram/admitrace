@@ -1,0 +1,53 @@
+apiVersion: admitrace.io/v1alpha1
+kind: Scenario
+metadata:
+  name: validating-pod-create
+compatibilityProfile:
+  id: kubernetes-1.36.2-defaults
+  kubernetesVersion: 1.36.2
+  featureGatePolicy: kubernetes-defaults
+configuration:
+  validatingWebhookConfiguration:
+    apiVersion: admissionregistration.k8s.io/v1
+    kind: ValidatingWebhookConfiguration
+    metadata:
+      name: validating-example
+    webhooks:
+      - name: pods.example.admitrace.io
+        failurePolicy: Fail
+        matchPolicy: Exact
+        sideEffects: None
+        admissionReviewVersions: [v1]
+        rules:
+          - operations: [CREATE]
+            apiGroups: [""]
+            apiVersions: [v1]
+            resources: [pods]
+            scope: Namespaced
+request:
+  uid: validating-example
+  kind:
+    group: ""
+    version: v1
+    kind: Pod
+  resource:
+    group: ""
+    version: v1
+    resource: pods
+  name: demo
+  namespace: default
+  operation: CREATE
+  scope: Namespaced
+  userInfo:
+    username: fixture-user
+  object:
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: demo
+      namespace: default
+expectations:
+  - webhookName: pods.example.admitrace.io
+    determination: determinate
+    outcome: called
+    terminalReasonCode: MATCH_CONDITIONS_TRUE
