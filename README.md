@@ -14,6 +14,7 @@ It evaluates `ValidatingWebhookConfiguration` and `MutatingWebhookConfiguration`
 - [Quickstart](docs/quickstart.md): build the CLI, run the validating and mutating examples, and add expectation checks to CI.
 - [Scenario and result reference](docs/reference.md): schemas, reason codes, exit codes, support policy, and explicit non-goals.
 - [Public beta validation](validation/beta/README.md): pinned Gatekeeper and Istio cases with license provenance, CLI results, and Kubernetes `1.36.2` oracle evidence.
+- [v0.1 release readiness](docs/release-readiness.md): one fail-closed command for pins, unit and fuzz tests, standalone smoke, parity, conformance, beta evidence, and documentation checks.
 
 ## Project status
 
