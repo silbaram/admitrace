@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "admitrace.beta-validation/v1alpha1",
+  "compatibilityProfile": "kubernetes-1.36.2-defaults",
+  "projects": [
+    {
+      "project": "OPA Gatekeeper",
+      "version": "v3.22.2",
+      "commit": "eda110bdaf2510288dccd73a1be4dd0c6442a4aa",
+      "license": "Apache-2.0",
+      "sourceURL": "https://raw.githubusercontent.com/open-policy-agent/gatekeeper/eda110bdaf2510288dccd73a1be4dd0c6442a4aa/deploy/gatekeeper.yaml",
+      "sourceSHA256": "72683f57fdfa4c34d4a892e5e6f457a5a7e533eba0293d781d53d08dd6614a5a",
+      "licenseURL": "https://raw.githubusercontent.com/open-policy-agent/gatekeeper/eda110bdaf2510288dccd73a1be4dd0c6442a4aa/LICENSE",
+      "licenseSHA256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "supportingSources": [
+        {
+          "url": "https://raw.githubusercontent.com/open-policy-agent/gatekeeper/eda110bdaf2510288dccd73a1be4dd0c6442a4aa/NOTICE",
+          "sha256": "7d4302ff15270639b7f8d25e9dbfb988b6d4075a36d0e47fdb0d4a91661b18d7"
+        }
+      ],
+      "scenario": "scenarios/gatekeeper-v3.22.2-validating.yaml",
+      "configurationKind": "ValidatingWebhookConfiguration",
+      "oracle": "Kubernetes 1.36.2 envtest with per-Webhook loopback TLS recorders",
+      "observations": [
+        {
+          "webhookName": "validation.gatekeeper.sh",
+          "outcome": "called",
+          "terminalReasonCode": "MATCH_CONDITIONS_TRUE"
+        },
+        {
+          "webhookName": "check-ignore-label.gatekeeper.sh",
+          "outcome": "skipped",
+          "terminalReasonCode": "RULE_NO_MATCH"
+        }
+      ],
+      "webhooks": 2,
+      "determinate": 2,
+      "indeterminate": 0,
+      "unsupported": 0,
+      "called": 1,
+      "skipped": 1
+    },
+    {
+      "project": "Istio",
+      "version": "1.30.0",
+      "commit": "badd809ed7d57954d4c16e12e75e15a7722a7b96",
+      "license": "Apache-2.0",
+      "sourceURL": "https://raw.githubusercontent.com/istio/istio/badd809ed7d57954d4c16e12e75e15a7722a7b96/manifests/charts/istio-control/istio-discovery/templates/mutatingwebhook.yaml",
+      "sourceSHA256": "0d0c1fdf2f607ce2eed45e68a37ed31e7301fc99f4853c833c91e1a2ab559223",
+      "licenseURL": "https://raw.githubusercontent.com/istio/istio/badd809ed7d57954d4c16e12e75e15a7722a7b96/LICENSE",
+      "licenseSHA256": "9fa6e54dafda853bb3cdc01486b677a55102f0d488282a85ba6e426d9125f8c5",
+      "supportingSources": [
+        {
+          "url": "https://raw.githubusercontent.com/istio/istio/badd809ed7d57954d4c16e12e75e15a7722a7b96/manifests/charts/istio-control/istio-discovery/values.yaml",
+          "sha256": "25a8185104caeeca0b8224fc2c78a7eea2bed9673f29fe99cf2a1c5bc72046e6"
+        }
+      ],
+      "scenario": "scenarios/istio-1.30.0-mutating.yaml",
+      "configurationKind": "MutatingWebhookConfiguration",
+      "oracle": "Kubernetes 1.36.2 envtest with per-Webhook loopback TLS recorders",
+      "observations": [
+        {
+          "webhookName": "rev.namespace.sidecar-injector.istio.io",
+          "outcome": "skipped",
+          "terminalReasonCode": "NAMESPACE_SELECTOR_NO_MATCH"
+        },
+        {
+          "webhookName": "rev.object.sidecar-injector.istio.io",
+          "outcome": "skipped",
+          "terminalReasonCode": "NAMESPACE_SELECTOR_NO_MATCH"
+        },
+        {
+          "webhookName": "namespace.sidecar-injector.istio.io",
+          "outcome": "called",
+          "terminalReasonCode": "MATCH_CONDITIONS_TRUE"
+        },
+        {
+          "webhookName": "object.sidecar-injector.istio.io",
+          "outcome": "skipped",
+          "terminalReasonCode": "NAMESPACE_SELECTOR_NO_MATCH"
+        }
+      ],
+      "webhooks": 4,
+      "determinate": 4,
+      "indeterminate": 0,
+      "unsupported": 0,
+      "called": 1,
+      "skipped": 3
+    }
+  ],
+  "summary": {
+    "projects": 2,
+    "scenarios": 2,
+    "webhooks": 6,
+    "determinate": 6,
+    "indeterminate": 0,
+    "unsupported": 0,
+    "incomplete": 0,
+    "incompleteRate": 0,
+    "called": 2,
+    "skipped": 4,
+    "semanticMismatches": 0
+  },
+  "traceFeedback": [
+    "Webhook index and sourcePath make the selected Gatekeeper rule and excluded namespace-label Webhook distinguishable.",
+    "Istio's three namespace-selector exclusions share one stable reason code; their Webhook names and sourcePath values identify the rendered selector branch.",
+    "Informational CAPABILITY_OUTSIDE_PROFILE diagnostics keep AdmissionReview transport, response handling, mutating patches, and reinvocation outside the claimed result."
+  ],
+  "scopeChangeCandidates": []
+}

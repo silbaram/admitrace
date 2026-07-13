@@ -1,0 +1,180 @@
+apiVersion: admitrace.io/v1alpha1
+kind: Scenario
+metadata:
+  name: istio-1.30.0-mutating
+compatibilityProfile:
+  id: kubernetes-1.36.2-defaults
+  kubernetesVersion: 1.36.2
+  featureGatePolicy: kubernetes-defaults
+configuration:
+  mutatingWebhookConfiguration:
+    apiVersion: admissionregistration.k8s.io/v1
+    kind: MutatingWebhookConfiguration
+    metadata:
+      name: istio-sidecar-injector
+    webhooks:
+      - name: rev.namespace.sidecar-injector.istio.io
+        admissionReviewVersions: [v1]
+        clientConfig:
+          service:
+            name: istiod
+            namespace: istio-system
+            path: /inject
+            port: 443
+        failurePolicy: Fail
+        reinvocationPolicy: Never
+        namespaceSelector:
+          matchExpressions:
+            - key: istio.io/rev
+              operator: In
+              values: [default]
+            - key: istio-injection
+              operator: DoesNotExist
+        objectSelector:
+          matchExpressions:
+            - key: sidecar.istio.io/inject
+              operator: NotIn
+              values: ["false"]
+        rules:
+          - operations: [CREATE]
+            apiGroups: [""]
+            apiVersions: [v1]
+            resources: [pods]
+        sideEffects: None
+      - name: rev.object.sidecar-injector.istio.io
+        admissionReviewVersions: [v1]
+        clientConfig:
+          service:
+            name: istiod
+            namespace: istio-system
+            path: /inject
+            port: 443
+        failurePolicy: Fail
+        reinvocationPolicy: Never
+        namespaceSelector:
+          matchExpressions:
+            - key: istio.io/rev
+              operator: DoesNotExist
+            - key: istio-injection
+              operator: DoesNotExist
+        objectSelector:
+          matchExpressions:
+            - key: sidecar.istio.io/inject
+              operator: NotIn
+              values: ["false"]
+            - key: istio.io/rev
+              operator: In
+              values: [default]
+        rules:
+          - operations: [CREATE]
+            apiGroups: [""]
+            apiVersions: [v1]
+            resources: [pods]
+        sideEffects: None
+      - name: namespace.sidecar-injector.istio.io
+        admissionReviewVersions: [v1]
+        clientConfig:
+          service:
+            name: istiod
+            namespace: istio-system
+            path: /inject
+            port: 443
+        failurePolicy: Fail
+        reinvocationPolicy: Never
+        namespaceSelector:
+          matchExpressions:
+            - key: istio-injection
+              operator: In
+              values: [enabled]
+        objectSelector:
+          matchExpressions:
+            - key: sidecar.istio.io/inject
+              operator: NotIn
+              values: ["false"]
+        rules:
+          - operations: [CREATE]
+            apiGroups: [""]
+            apiVersions: [v1]
+            resources: [pods]
+        sideEffects: None
+      - name: object.sidecar-injector.istio.io
+        admissionReviewVersions: [v1]
+        clientConfig:
+          service:
+            name: istiod
+            namespace: istio-system
+            path: /inject
+            port: 443
+        failurePolicy: Fail
+        reinvocationPolicy: Never
+        namespaceSelector:
+          matchExpressions:
+            - key: istio-injection
+              operator: DoesNotExist
+            - key: istio.io/rev
+              operator: DoesNotExist
+        objectSelector:
+          matchExpressions:
+            - key: sidecar.istio.io/inject
+              operator: In
+              values: ["true"]
+            - key: istio.io/rev
+              operator: DoesNotExist
+        rules:
+          - operations: [CREATE]
+            apiGroups: [""]
+            apiVersions: [v1]
+            resources: [pods]
+        sideEffects: None
+request:
+  uid: istio-1.30.0-mutating
+  kind:
+    group: ""
+    version: v1
+    kind: Pod
+  resource:
+    group: ""
+    version: v1
+    resource: pods
+  name: beta-workload
+  namespace: beta-istio
+  operation: CREATE
+  scope: Namespaced
+  userInfo:
+    username: beta-fixture
+  object:
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: beta-workload
+      namespace: beta-istio
+    spec:
+      containers:
+        - name: beta
+          image: example.invalid/beta:1
+externalContext:
+  namespace:
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: beta-istio
+      labels:
+        istio-injection: enabled
+        kubernetes.io/metadata.name: beta-istio
+expectations:
+  - webhookName: rev.namespace.sidecar-injector.istio.io
+    determination: determinate
+    outcome: skipped
+    terminalReasonCode: NAMESPACE_SELECTOR_NO_MATCH
+  - webhookName: rev.object.sidecar-injector.istio.io
+    determination: determinate
+    outcome: skipped
+    terminalReasonCode: NAMESPACE_SELECTOR_NO_MATCH
+  - webhookName: namespace.sidecar-injector.istio.io
+    determination: determinate
+    outcome: called
+    terminalReasonCode: MATCH_CONDITIONS_TRUE
+  - webhookName: object.sidecar-injector.istio.io
+    determination: determinate
+    outcome: skipped
+    terminalReasonCode: NAMESPACE_SELECTOR_NO_MATCH

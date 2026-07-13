@@ -1,0 +1,129 @@
+apiVersion: admitrace.io/v1alpha1
+kind: Scenario
+metadata:
+  name: gatekeeper-v3.22.2-validating
+compatibilityProfile:
+  id: kubernetes-1.36.2-defaults
+  kubernetesVersion: 1.36.2
+  featureGatePolicy: kubernetes-defaults
+configuration:
+  validatingWebhookConfiguration:
+    apiVersion: admissionregistration.k8s.io/v1
+    kind: ValidatingWebhookConfiguration
+    metadata:
+      name: gatekeeper-validating-webhook-configuration
+    webhooks:
+      - name: validation.gatekeeper.sh
+        admissionReviewVersions: [v1, v1beta1]
+        clientConfig:
+          service:
+            name: gatekeeper-webhook-service
+            namespace: gatekeeper-system
+            path: /v1/admit
+        failurePolicy: Ignore
+        matchPolicy: Exact
+        namespaceSelector:
+          matchExpressions:
+            - key: admission.gatekeeper.sh/ignore
+              operator: DoesNotExist
+            - key: kubernetes.io/metadata.name
+              operator: NotIn
+              values: [gatekeeper-system]
+        rules:
+          - apiGroups: ["*"]
+            apiVersions: ["*"]
+            operations: [CREATE, UPDATE]
+            resources:
+              - "*"
+              - pods/ephemeralcontainers
+              - pods/exec
+              - pods/log
+              - pods/eviction
+              - pods/portforward
+              - pods/proxy
+              - pods/attach
+              - pods/binding
+              - pods/resize
+              - deployments/scale
+              - replicasets/scale
+              - statefulsets/scale
+              - replicationcontrollers/scale
+              - services/proxy
+              - nodes/proxy
+              - services/status
+        sideEffects: None
+        timeoutSeconds: 3
+      - name: check-ignore-label.gatekeeper.sh
+        admissionReviewVersions: [v1, v1beta1]
+        clientConfig:
+          service:
+            name: gatekeeper-webhook-service
+            namespace: gatekeeper-system
+            path: /v1/admitlabel
+        failurePolicy: Fail
+        matchPolicy: Exact
+        namespaceSelector:
+          matchExpressions:
+            - key: kubernetes.io/metadata.name
+              operator: NotIn
+              values: [gatekeeper-system]
+        rules:
+          - apiGroups: [""]
+            apiVersions: ["*"]
+            operations: [CREATE, UPDATE]
+            resources: [namespaces]
+        sideEffects: None
+        timeoutSeconds: 3
+request:
+  uid: gatekeeper-v3.22.2-validating
+  kind:
+    group: apps
+    version: v1
+    kind: Deployment
+  resource:
+    group: apps
+    version: v1
+    resource: deployments
+  name: beta-workload
+  namespace: beta-gatekeeper
+  operation: CREATE
+  scope: Namespaced
+  userInfo:
+    username: beta-fixture
+  object:
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: beta-workload
+      namespace: beta-gatekeeper
+      labels:
+        app: beta-workload
+    spec:
+      selector:
+        matchLabels:
+          app: beta-workload
+      template:
+        metadata:
+          labels:
+            app: beta-workload
+        spec:
+          containers:
+            - name: beta
+              image: example.invalid/beta:1
+externalContext:
+  namespace:
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: beta-gatekeeper
+      labels:
+        kubernetes.io/metadata.name: beta-gatekeeper
+expectations:
+  - webhookName: validation.gatekeeper.sh
+    determination: determinate
+    outcome: called
+    terminalReasonCode: MATCH_CONDITIONS_TRUE
+  - webhookName: check-ignore-label.gatekeeper.sh
+    determination: determinate
+    outcome: skipped
+    terminalReasonCode: RULE_NO_MATCH
