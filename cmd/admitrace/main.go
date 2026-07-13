@@ -13,7 +13,7 @@ var (
 )
 
 func main() {
-	exitCode := cli.Execute(os.Args[1:], os.Stdout, os.Stderr, cli.BuildMetadata{
+	exitCode := cli.Execute(os.Args[1:], os.Stdin, os.Stdout, os.Stderr, cli.BuildMetadata{
 		Version:   version,
 		Commit:    commit,
 		BuildDate: buildDate,

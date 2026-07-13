@@ -15,7 +15,7 @@ func TestExecuteShowsRootHelp(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	if got := cli.Execute(nil, &stdout, &stderr, testBuildMetadata()); got != cli.ExitSuccess {
+	if got := cli.Execute(nil, strings.NewReader(""), &stdout, &stderr, testBuildMetadata()); got != cli.ExitSuccess {
 		t.Fatalf("Execute() = %d, want %d", got, cli.ExitSuccess)
 	}
 
@@ -72,7 +72,7 @@ func TestExecuteCommandErrorsUseUsagePath(t *testing.T) {
 			var stdout bytes.Buffer
 			var stderr bytes.Buffer
 
-			if got := cli.Execute(test.args, &stdout, &stderr, testBuildMetadata()); got != cli.ExitInvalidInput {
+			if got := cli.Execute(test.args, strings.NewReader(""), &stdout, &stderr, testBuildMetadata()); got != cli.ExitInvalidInput {
 				t.Fatalf("Execute() = %d, want %d", got, cli.ExitInvalidInput)
 			}
 			if got := stdout.String(); got != "" {
@@ -91,7 +91,7 @@ func TestExecuteDiagnosticWriteFailureIsInternal(t *testing.T) {
 	t.Parallel()
 
 	stderr := failingWriter{err: errors.New("diagnostic stream closed")}
-	if got := cli.Execute([]string{"unknown"}, &bytes.Buffer{}, stderr, testBuildMetadata()); got != cli.ExitInternalError {
+	if got := cli.Execute([]string{"unknown"}, strings.NewReader(""), &bytes.Buffer{}, stderr, testBuildMetadata()); got != cli.ExitInternalError {
 		t.Errorf("Execute() = %d, want %d", got, cli.ExitInternalError)
 	}
 }

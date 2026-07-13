@@ -15,7 +15,7 @@ func TestExecuteVersionText(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	if got := cli.Execute([]string{"version"}, &stdout, &stderr, testBuildMetadata()); got != cli.ExitSuccess {
+	if got := cli.Execute([]string{"version"}, strings.NewReader(""), &stdout, &stderr, testBuildMetadata()); got != cli.ExitSuccess {
 		t.Fatalf("Execute() = %d, want %d", got, cli.ExitSuccess)
 	}
 
@@ -50,7 +50,7 @@ func TestExecuteVersionJSON(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	if got := cli.Execute([]string{"version", "-o", "json"}, &stdout, &stderr, testBuildMetadata()); got != cli.ExitSuccess {
+	if got := cli.Execute([]string{"version", "-o", "json"}, strings.NewReader(""), &stdout, &stderr, testBuildMetadata()); got != cli.ExitSuccess {
 		t.Fatalf("Execute() = %d, want %d", got, cli.ExitSuccess)
 	}
 
@@ -124,13 +124,13 @@ func TestExecuteVersionAcceptsPersistentOutputBeforeCommand(t *testing.T) {
 
 	var beforeStdout bytes.Buffer
 	var beforeStderr bytes.Buffer
-	if got := cli.Execute([]string{"--output", "json", "version"}, &beforeStdout, &beforeStderr, testBuildMetadata()); got != cli.ExitSuccess {
+	if got := cli.Execute([]string{"--output", "json", "version"}, strings.NewReader(""), &beforeStdout, &beforeStderr, testBuildMetadata()); got != cli.ExitSuccess {
 		t.Fatalf("Execute() with output before command = %d, want %d", got, cli.ExitSuccess)
 	}
 
 	var afterStdout bytes.Buffer
 	var afterStderr bytes.Buffer
-	if got := cli.Execute([]string{"version", "--output", "json"}, &afterStdout, &afterStderr, testBuildMetadata()); got != cli.ExitSuccess {
+	if got := cli.Execute([]string{"version", "--output", "json"}, strings.NewReader(""), &afterStdout, &afterStderr, testBuildMetadata()); got != cli.ExitSuccess {
 		t.Fatalf("Execute() with output after command = %d, want %d", got, cli.ExitSuccess)
 	}
 
@@ -148,7 +148,7 @@ func TestExecuteVersionWriteFailureIsInternal(t *testing.T) {
 	var stderr bytes.Buffer
 	stdout := errorWriter{err: errors.New("broken pipe")}
 
-	if got := cli.Execute([]string{"version"}, stdout, &stderr, testBuildMetadata()); got != cli.ExitInternalError {
+	if got := cli.Execute([]string{"version"}, strings.NewReader(""), stdout, &stderr, testBuildMetadata()); got != cli.ExitInternalError {
 		t.Fatalf("Execute() = %d, want %d", got, cli.ExitInternalError)
 	}
 	if got := stderr.String(); !strings.Contains(got, "error: write version output: broken pipe") {

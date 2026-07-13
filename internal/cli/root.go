@@ -10,12 +10,13 @@ import (
 
 // Execute runs the root command with the provided arguments, streams, and
 // build metadata.
-func Execute(args []string, stdout, stderr io.Writer, build BuildMetadata) ExitCode {
-	command := newRootCommand(stdout, stderr, build)
+func Execute(args []string, stdin io.Reader, stdout, stderr io.Writer, build BuildMetadata) ExitCode {
+	exitCode := ExitSuccess
+	command := newRootCommand(stdin, stdout, stderr, build, &exitCode)
 	command.SetArgs(args)
 	executed, err := command.ExecuteC()
 	if err == nil {
-		return ExitSuccess
+		return exitCode
 	}
 
 	exitCode, showUsage := classifyCommandError(err)
@@ -42,7 +43,7 @@ func writeCommandError(command *cobra.Command, stderr io.Writer, commandErr erro
 	return nil
 }
 
-func newRootCommand(stdout, stderr io.Writer, build BuildMetadata) *cobra.Command {
+func newRootCommand(stdin io.Reader, stdout, stderr io.Writer, build BuildMetadata, exitCode *ExitCode) *cobra.Command {
 	var output string
 	command := &cobra.Command{
 		Use:           "admitrace",
@@ -66,19 +67,16 @@ func newRootCommand(stdout, stderr io.Writer, build BuildMetadata) *cobra.Comman
 			return nil
 		},
 	}
+	command.SetIn(stdin)
 	command.SetOut(stdout)
 	command.SetErr(stderr)
 	command.PersistentFlags().StringVarP(&output, "output", "o", string(outputText), "output format: text or json")
 	command.AddCommand(
-		newExplainCommand(),
+		newExplainCommand(&output, exitCode),
 		newTestCommand(),
 		newVersionCommand(&output, build),
 	)
 	return command
-}
-
-func newExplainCommand() *cobra.Command {
-	return newHelpOnlyCommand("explain", "Explain admission webhook routing decisions")
 }
 
 func newTestCommand() *cobra.Command {

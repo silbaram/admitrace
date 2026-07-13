@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -53,6 +54,64 @@ func TestInvalidOutputProcessExit(t *testing.T) {
 	}
 }
 
+func TestExplainProcessFileAndStdinAreEquivalent(t *testing.T) {
+	filename := filepath.Join(t.TempDir(), "scenario.yaml")
+	if err := os.WriteFile(filename, []byte(processScenario), 0o600); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+
+	fileCommand := helperProcess(t, "explain", "-f", filename, "-o", "json")
+	fileOutput, err := fileCommand.Output()
+	if err != nil {
+		t.Fatalf("file explain error = %v", err)
+	}
+
+	stdinCommand := helperProcess(t, "explain", "-f", "-", "-o", "json")
+	stdinCommand.Stdin = strings.NewReader(processScenario)
+	stdinOutput, err := stdinCommand.Output()
+	if err != nil {
+		t.Fatalf("stdin explain error = %v", err)
+	}
+	if got, want := string(fileOutput), string(stdinOutput); got != want {
+		t.Errorf("file output = %q, want stdin output %q", got, want)
+	}
+	for _, want := range []string{`"determination": "determinate"`, `"outcome": "called"`} {
+		if got := string(fileOutput); !strings.Contains(got, want) {
+			t.Errorf("explain output = %q, want substring %q", got, want)
+		}
+	}
+}
+
+func TestExplainIncompleteProcessExit(t *testing.T) {
+	input := strings.Replace(
+		processScenario,
+		"        rules:",
+		"        namespaceSelector:\n          matchLabels:\n            environment: production\n        rules:",
+		1,
+	)
+	command := helperProcess(t, "explain", "-f", "-", "-o", "text")
+	command.Stdin = strings.NewReader(input)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+
+	err := command.Run()
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) {
+		t.Fatalf("admitrace explain error = %v, want process exit error", err)
+	}
+	if got := exitErr.ExitCode(); got != 3 {
+		t.Errorf("admitrace explain exit code = %d, want 3", got)
+	}
+	if got := stdout.String(); !strings.Contains(got, "determination: indeterminate") {
+		t.Errorf("admitrace explain stdout = %q, want indeterminate result", got)
+	}
+	if got := stderr.String(); got != "" {
+		t.Errorf("admitrace explain stderr = %q, want empty", got)
+	}
+}
+
 func TestAdmitraceHelperProcess(t *testing.T) {
 	if os.Getenv("ADMITRACE_HELPER_PROCESS") != "1" {
 		return
@@ -87,3 +146,32 @@ func helperProcess(t *testing.T, args ...string) *exec.Cmd {
 	command.Env = append(os.Environ(), "ADMITRACE_HELPER_PROCESS=1")
 	return command
 }
+
+const processScenario = `apiVersion: admitrace.io/v1alpha1
+kind: Scenario
+metadata:
+  name: process-explain
+compatibilityProfile:
+  id: kubernetes-1.36.2-defaults
+  kubernetesVersion: 1.36.2
+  featureGatePolicy: kubernetes-defaults
+configuration:
+  validatingWebhookConfiguration:
+    apiVersion: admissionregistration.k8s.io/v1
+    kind: ValidatingWebhookConfiguration
+    webhooks:
+      - name: process.policy.example.com
+        failurePolicy: Fail
+        rules:
+          - operations: [CREATE]
+            apiGroups: [""]
+            apiVersions: [v1]
+            resources: [pods]
+request:
+  kind: {version: v1, kind: Pod}
+  resource: {version: v1, resource: pods}
+  namespace: default
+  operation: CREATE
+  scope: Namespaced
+  userInfo: {username: process-test}
+`
