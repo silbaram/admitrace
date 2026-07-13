@@ -1,15 +1,22 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/silbaram/admitrace/internal/cli"
 )
 
+var (
+	version   = "devel"
+	commit    = "unknown"
+	buildDate = "unknown"
+)
+
 func main() {
-	if err := cli.Execute(os.Args[1:], os.Stdout, os.Stderr); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	exitCode := cli.Execute(os.Args[1:], os.Stdout, os.Stderr, cli.BuildMetadata{
+		Version:   version,
+		Commit:    commit,
+		BuildDate: buildDate,
+	})
+	os.Exit(int(exitCode))
 }
