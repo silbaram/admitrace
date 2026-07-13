@@ -263,6 +263,80 @@ func TestDecodeValidatesEnvelopeAndConfigurationIdentity(t *testing.T) {
 	}
 }
 
+func TestDecodeValidatesExpectations(t *testing.T) {
+	t.Parallel()
+
+	called := contract.OutcomeCalled
+	tests := []struct {
+		name         string
+		expectations []contract.WebhookExpectation
+		wantPath     string
+	}{
+		{
+			name: "valid optional assertions",
+			expectations: []contract.WebhookExpectation{{
+				WebhookName:        "first.policy.example.com",
+				Determination:      contract.DeterminationDeterminate,
+				Outcome:            &called,
+				TerminalReasonCode: contract.ReasonCodeMatchConditionsTrue,
+			}},
+		},
+		{
+			name: "empty webhook name",
+			expectations: []contract.WebhookExpectation{{
+				Determination: contract.DeterminationDeterminate,
+			}},
+			wantPath: ".expectations[0].webhookName",
+		},
+		{
+			name: "unknown webhook",
+			expectations: []contract.WebhookExpectation{{
+				WebhookName:   "unknown.policy.example.com",
+				Determination: contract.DeterminationDeterminate,
+			}},
+			wantPath: ".expectations[0].webhookName",
+		},
+		{
+			name: "duplicate webhook",
+			expectations: []contract.WebhookExpectation{
+				{WebhookName: "first.policy.example.com", Determination: contract.DeterminationDeterminate},
+				{WebhookName: "first.policy.example.com", Determination: contract.DeterminationDeterminate},
+			},
+			wantPath: ".expectations[1].webhookName",
+		},
+		{
+			name: "invalid determination",
+			expectations: []contract.WebhookExpectation{{
+				WebhookName:   "first.policy.example.com",
+				Determination: "unknown",
+			}},
+			wantPath: ".expectations[0]",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			input := newScenario(contract.ConfigurationKindValidating)
+			input.Expectations = test.expectations
+			data, err := json.Marshal(input)
+			if err != nil {
+				t.Fatalf("json.Marshal() error = %v", err)
+			}
+
+			_, err = scenario.Decode(data)
+			if test.wantPath == "" {
+				if err != nil {
+					t.Fatalf("Decode() error = %v", err)
+				}
+				return
+			}
+			requireInvalidInput(t, err, test.wantPath)
+		})
+	}
+}
+
 func TestDecodePreservesRawRequestPayloadBoundaries(t *testing.T) {
 	t.Parallel()
 

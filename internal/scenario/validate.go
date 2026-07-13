@@ -48,7 +48,48 @@ func Validate(input *contract.Scenario) error {
 	if err != nil {
 		return err
 	}
-	return validateRequestRouting(input)
+	if err := validateRequestRouting(input); err != nil {
+		return err
+	}
+	return validateExpectations(input)
+}
+
+func validateExpectations(input *contract.Scenario) error {
+	configured := configuredWebhookNames(input.Configuration)
+	seen := make(map[string]int, len(input.Expectations))
+	for i, expectation := range input.Expectations {
+		path := field.NewPath("expectations").Index(i)
+		if strings.TrimSpace(expectation.WebhookName) == "" {
+			return invalidInput(path.Child("webhookName").String(), fmt.Errorf("webhook name is required"))
+		}
+		if firstIndex, duplicate := seen[expectation.WebhookName]; duplicate {
+			return invalidInput(path.Child("webhookName").String(), fmt.Errorf("duplicate expectation for webhook %q first declared at index %d", expectation.WebhookName, firstIndex))
+		}
+		seen[expectation.WebhookName] = i
+		if _, ok := configured[expectation.WebhookName]; !ok {
+			return invalidInput(path.Child("webhookName").String(), fmt.Errorf("unknown configured webhook %q", expectation.WebhookName))
+		}
+		if err := expectation.Validate(); err != nil {
+			return invalidInput(path.String(), err)
+		}
+	}
+	return nil
+}
+
+func configuredWebhookNames(configuration contract.WebhookConfiguration) map[string]struct{} {
+	if configuration.Validating != nil {
+		names := make(map[string]struct{}, len(configuration.Validating.Webhooks))
+		for _, webhook := range configuration.Validating.Webhooks {
+			names[webhook.Name] = struct{}{}
+		}
+		return names
+	}
+
+	names := make(map[string]struct{}, len(configuration.Mutating.Webhooks))
+	for _, webhook := range configuration.Mutating.Webhooks {
+		names[webhook.Name] = struct{}{}
+	}
+	return names
 }
 
 func validateCompatibilityProfile(profile contract.CompatibilityProfile) error {

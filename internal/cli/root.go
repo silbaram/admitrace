@@ -73,26 +73,8 @@ func newRootCommand(stdin io.Reader, stdout, stderr io.Writer, build BuildMetada
 	command.PersistentFlags().StringVarP(&output, "output", "o", string(outputText), "output format: text or json")
 	command.AddCommand(
 		newExplainCommand(&output, exitCode),
-		newTestCommand(),
+		newTestCommand(&output, exitCode),
 		newVersionCommand(&output, build),
 	)
 	return command
-}
-
-func newTestCommand() *cobra.Command {
-	return newHelpOnlyCommand("test", "Test Scenario expectations")
-}
-
-func newHelpOnlyCommand(use, short string) *cobra.Command {
-	return &cobra.Command{
-		Use:   use,
-		Short: short,
-		Args:  cobra.NoArgs,
-		RunE: func(command *cobra.Command, _ []string) error {
-			if err := command.Help(); err != nil {
-				return internalError("show command help", err)
-			}
-			return nil
-		},
-	}
 }

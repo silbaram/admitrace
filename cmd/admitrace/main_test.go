@@ -112,6 +112,106 @@ func TestExplainIncompleteProcessExit(t *testing.T) {
 	}
 }
 
+func TestTestCommandProcessExitCodesZeroThroughThree(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		wantCode int
+		want     string
+	}{
+		{
+			name: "matching expectation",
+			input: processScenario + `expectations:
+  - webhookName: process.policy.example.com
+    determination: determinate
+`,
+			wantCode: 0,
+			want:     `"status": "passed"`,
+		},
+		{
+			name: "expectation mismatch",
+			input: processScenario + `expectations:
+  - webhookName: process.policy.example.com
+    determination: indeterminate
+`,
+			wantCode: 1,
+			want:     `"status": "mismatched"`,
+		},
+		{
+			name:     "invalid input",
+			input:    "kind: [",
+			wantCode: 2,
+			want:     `"status": "invalid"`,
+		},
+		{
+			name: "unexpected incomplete",
+			input: strings.Replace(
+				processScenario,
+				"        rules:",
+				"        namespaceSelector:\n          matchLabels:\n            environment: production\n        rules:",
+				1,
+			),
+			wantCode: 3,
+			want:     `"status": "incomplete"`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			filename := filepath.Join(t.TempDir(), "scenario.yaml")
+			if err := os.WriteFile(filename, []byte(test.input), 0o600); err != nil {
+				t.Fatalf("os.WriteFile() error = %v", err)
+			}
+
+			command := helperProcess(t, "test", filename, "-o", "json")
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
+			command.Stdout = &stdout
+			command.Stderr = &stderr
+			err := command.Run()
+			if got := processExitCode(err); got != test.wantCode {
+				t.Fatalf("admitrace test exit code = %d, want %d; error = %v; stderr = %q", got, test.wantCode, err, stderr.String())
+			}
+			if got := stderr.String(); got != "" {
+				t.Errorf("admitrace test stderr = %q, want empty", got)
+			}
+			if got := stdout.String(); !strings.Contains(got, test.want) {
+				t.Errorf("admitrace test stdout = %q, want substring %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestTestCommandProcessInternalWriteErrorExitFour(t *testing.T) {
+	filename := filepath.Join(t.TempDir(), "scenario.yaml")
+	if err := os.WriteFile(filename, []byte(processScenario), 0o600); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+
+	command := helperProcess(t, "test", filename)
+	command.Env = append(command.Env, "ADMITRACE_HELPER_CLOSE_STDOUT=1")
+	var stderr bytes.Buffer
+	command.Stderr = &stderr
+	err := command.Run()
+	if got := processExitCode(err); got != 4 {
+		t.Fatalf("admitrace test exit code = %d, want 4; error = %v; stderr = %q", got, err, stderr.String())
+	}
+	if got := stderr.String(); !strings.Contains(got, "write test output") {
+		t.Errorf("admitrace test stderr = %q, want write error", got)
+	}
+}
+
+func processExitCode(err error) int {
+	if err == nil {
+		return 0
+	}
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.ExitCode()
+	}
+	return -1
+}
+
 func TestAdmitraceHelperProcess(t *testing.T) {
 	if os.Getenv("ADMITRACE_HELPER_PROCESS") != "1" {
 		return
@@ -132,6 +232,11 @@ func TestAdmitraceHelperProcess(t *testing.T) {
 		version = "v0.1.0-process-test"
 		commit = "process-test-commit"
 		buildDate = "2026-07-13T01:02:03Z"
+	}
+	if os.Getenv("ADMITRACE_HELPER_CLOSE_STDOUT") == "1" {
+		if err := os.Stdout.Close(); err != nil {
+			os.Exit(4)
+		}
 	}
 	os.Args = append([]string{"admitrace"}, os.Args[separator+1:]...)
 	main()
