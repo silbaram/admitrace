@@ -123,6 +123,7 @@ func runScenarioTests(ctx context.Context, paths []string) testReport {
 
 func discoverScenarios(inputs []string) []discoveredScenario {
 	discovered := make(map[string]discoveredScenario)
+	documentCount := 0
 	for _, input := range inputs {
 		path := filepath.Clean(input)
 		info, err := os.Stat(path)
@@ -132,13 +133,21 @@ func discoverScenarios(inputs []string) []discoveredScenario {
 		}
 		if !info.IsDir() {
 			if info.Mode().IsRegular() {
+				if _, exists := discovered[path]; !exists {
+					documentCount++
+					if err := scenario.CheckDocumentCount(documentCount); err != nil {
+						return []discoveredScenario{{path: path, err: err}}
+					}
+				}
 				discovered[path] = discoveredScenario{path: path}
 			} else {
 				discovered[path] = discoveredScenario{path: path, err: fmt.Errorf("path is not a regular file or directory")}
 			}
 			continue
 		}
-		discoverDirectory(path, discovered)
+		if err := discoverDirectory(path, discovered, &documentCount); err != nil {
+			return []discoveredScenario{{path: path, err: err}}
+		}
 	}
 
 	result := make([]discoveredScenario, 0, len(discovered))
@@ -149,7 +158,7 @@ func discoverScenarios(inputs []string) []discoveredScenario {
 	return result
 }
 
-func discoverDirectory(root string, discovered map[string]discoveredScenario) {
+func discoverDirectory(root string, discovered map[string]discoveredScenario, documentCount *int) error {
 	found := false
 	walkFailed := false
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
@@ -169,16 +178,26 @@ func discoverDirectory(root string, discovered map[string]discoveredScenario) {
 			return nil
 		}
 		found = true
+		if _, exists := discovered[path]; !exists {
+			*documentCount++
+			if err := scenario.CheckDocumentCount(*documentCount); err != nil {
+				return err
+			}
+		}
 		discovered[path] = discoveredScenario{path: path}
 		return nil
 	})
 	if err != nil {
+		if errors.Is(err, contract.ErrResourceLimit) {
+			return err
+		}
 		discovered[root] = discoveredScenario{path: root, err: fmt.Errorf("walk directory: %w", err)}
-		return
+		return nil
 	}
 	if !found && !walkFailed {
 		discovered[root] = discoveredScenario{path: root, err: fmt.Errorf("directory contains no .yaml, .yml, or .json Scenario files")}
 	}
+	return nil
 }
 
 func isScenarioExtension(extension string) bool {
@@ -195,9 +214,9 @@ func evaluateFixture(ctx context.Context, discovered discoveredScenario) fixture
 		return failedFixture(discovered.path, ExitInvalidInput, discovered.err)
 	}
 
-	data, err := os.ReadFile(discovered.path)
+	data, err := readScenario(nil, discovered.path)
 	if err != nil {
-		return failedFixture(discovered.path, ExitInvalidInput, fmt.Errorf("read Scenario file: %w", err))
+		return failedFixture(discovered.path, classifyTestError(err), err)
 	}
 	input, err := scenario.Decode(data)
 	if err != nil {

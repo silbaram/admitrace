@@ -100,6 +100,24 @@ Verify the Kubernetes dependency boundary with:
 ./hack/verify-dependencies.sh
 ```
 
+### Local safety limits
+
+AdmiTrace rejects a Scenario larger than 1 MiB or nested deeper than 100
+containers. One `admitrace test` invocation accepts at most 1,000 discovered
+Scenario documents. Limit failures are stable invalid-input diagnostics; they
+are never interpreted through a Webhook `failurePolicy`.
+
+The guardrails are split into two independently runnable groups:
+
+```bash
+./hack/test-resource-limits-fuzz.sh
+./hack/test-redaction-offline-determinism.sh
+```
+
+The first group exercises input/document/CEL limits and seeded decoder and
+fixture fuzz targets. The second verifies sensitive-value redaction, canonical
+byte equality, offline execution, and the production runtime boundary.
+
 ## Architecture
 
 ```text
@@ -133,4 +151,3 @@ Kubernetes-version-specific code is isolated behind `internal/compat/kube136`. T
 - Input limits, redaction, fuzzing, and offline guardrails
 - Kubernetes `1.36.2` envtest oracle and parity matrix
 - User documentation, real-world Webhook validation, and v0.1 release readiness
-

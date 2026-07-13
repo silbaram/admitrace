@@ -148,3 +148,24 @@ func TestEvaluationErrorNilReceivers(t *testing.T) {
 		})
 	}
 }
+
+func TestResourceLimitErrorCategoriesAndMessage(t *testing.T) {
+	t.Parallel()
+
+	err := &contract.ResourceLimitError{
+		Field:    ".request.object",
+		Resource: "document nesting depth",
+		Actual:   101,
+		Limit:    100,
+	}
+	if !errors.Is(err, contract.ErrResourceLimit) {
+		t.Errorf("errors.Is(error, ErrResourceLimit) = false, want true")
+	}
+	if !errors.Is(err, contract.ErrInvalidInput) {
+		t.Errorf("errors.Is(error, ErrInvalidInput) = false, want true")
+	}
+	want := `resource limit exceeded: document nesting depth: got 101, limit 100 at field ".request.object"`
+	if got := err.Error(); got != want {
+		t.Errorf("Error() = %q, want %q", got, want)
+	}
+}

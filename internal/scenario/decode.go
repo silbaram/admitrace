@@ -17,6 +17,9 @@ import (
 // fields unstructured while retaining strictness for the Scenario envelope and
 // the typed Kubernetes configuration.
 func Decode(data []byte) (*contract.Scenario, error) {
+	if err := checkDocumentLimits(data); err != nil {
+		return nil, err
+	}
 	if !yaml.IsJSONBuffer(data) {
 		// The YAML-to-JSON conversion is intentionally preflighted against an
 		// untyped target. It catches ambiguous duplicate YAML keys without
@@ -24,6 +27,9 @@ func Decode(data []byte) (*contract.Scenario, error) {
 		var document any
 		if err := yaml.UnmarshalStrict(data, &document); err != nil {
 			return nil, invalidInput(".", err)
+		}
+		if err := checkDecodedDepth(document); err != nil {
+			return nil, err
 		}
 	}
 

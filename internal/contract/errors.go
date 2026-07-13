@@ -16,7 +16,41 @@ var (
 	ErrKubernetesEvaluation = errors.New("kubernetes evaluation error")
 	// ErrInternal is the category sentinel for internal failures.
 	ErrInternal = errors.New("internal error")
+	// ErrResourceLimit identifies input rejected before evaluation because a
+	// documented local resource limit was exceeded.
+	ErrResourceLimit = errors.New("resource limit exceeded")
 )
+
+// ResourceLimitError describes an input resource that exceeded a deterministic
+// local limit. Resource limits are invalid input and never become evaluation
+// errors governed by failurePolicy.
+type ResourceLimitError struct {
+	Field    string
+	Resource string
+	Limit    int
+	Actual   int
+}
+
+// Error returns the stable resource, actual value, and configured limit.
+func (e *ResourceLimitError) Error() string {
+	if e == nil {
+		return ErrResourceLimit.Error()
+	}
+	detail := e.Resource
+	if detail == "" {
+		detail = "input"
+	}
+	message := fmt.Sprintf("%s: %s: got %d, limit %d", ErrResourceLimit, detail, e.Actual, e.Limit)
+	if e.Field != "" {
+		message += fmt.Sprintf(" at field %q", e.Field)
+	}
+	return message
+}
+
+// Is classifies ResourceLimitError as both invalid input and a resource limit.
+func (e *ResourceLimitError) Is(target error) bool {
+	return target == ErrInvalidInput || target == ErrResourceLimit
+}
 
 // InvalidInputError describes input that does not satisfy the evaluation contract.
 type InvalidInputError struct {

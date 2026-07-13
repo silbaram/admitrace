@@ -100,6 +100,24 @@ Kubernetes dependency boundary도 함께 검증할 수 있습니다.
 ./hack/verify-dependencies.sh
 ```
 
+### 로컬 안전 제한
+
+AdmiTrace는 1 MiB를 초과하거나 container 중첩이 100단계를 넘는 Scenario를
+거부합니다. 한 번의 `admitrace test` 실행에서는 탐색된 Scenario 문서를 최대
+1,000개까지 처리합니다. 제한 초과는 안정적인 invalid-input 진단이며 Webhook
+`failurePolicy`로 해석하지 않습니다.
+
+Guardrail 검증은 다음 두 그룹을 각각 독립적으로 실행할 수 있습니다.
+
+```bash
+./hack/test-resource-limits-fuzz.sh
+./hack/test-redaction-offline-determinism.sh
+```
+
+첫 그룹은 입력·문서·CEL 제한과 seed가 있는 decoder·fixture fuzz target을
+검증합니다. 두 번째 그룹은 민감 값 redaction, canonical byte equality, offline
+실행과 production runtime 경계를 검증합니다.
+
 ## 아키텍처
 
 ```text
@@ -133,4 +151,3 @@ Kubernetes 버전 의존 코드는 `internal/compat/kube136` 뒤에 격리합니
 - 입력 제한, redaction, fuzz, offline guardrail
 - Kubernetes `1.36.2` envtest oracle과 parity matrix
 - 사용자 문서, 실제 Webhook 사례 검증, v0.1 release readiness
-
