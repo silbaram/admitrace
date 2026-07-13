@@ -19,3 +19,15 @@ KUBEBUILDER_ASSETS=/path/to/kubernetes/1.36.2/assets ./hack/test-parity-cel-auth
 ```
 
 Both scripts run the offline product comparison first and then the pinned API server observation. They fail if either expected test entry point does not execute.
+
+## Unified release gate
+
+Task 022 combines the core and advanced suites in a checked 33-case matrix. The matrix fixes every case to the `kubernetes-1.36.2-defaults` profile and rejects duplicate Scenario ids, missing required branch tags, unregistered oracle categories, and profile drift.
+
+Run the release gate from the repository root:
+
+```sh
+KUBEBUILDER_ASSETS=/path/to/kubernetes/1.36.2/assets ./hack/test-parity-gate.sh
+```
+
+Set `PARITY_REPORT` to choose the report path. The default is `${TMPDIR}/admitrace-parity-kubernetes-1.36.2.json`. The report has no timestamp, duration, host path, or other nondeterministic field. It reports setup failures, determinate kube-apiserver semantic mismatches, golden contract failures, incomplete contract failures, and other contract failures separately. The gate passes only when all 18 determinate API server observations match and all offline contracts pass.
