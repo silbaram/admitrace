@@ -15,6 +15,7 @@ func TestValidateCasesRejectsOpenOracleAndUnstableTags(t *testing.T) {
 	}{
 		{name: "valid"},
 		{name: "open oracle", mutate: func(testCase *Case) { testCase.OracleType = "external" }, wantFail: true},
+		{name: "golden trace is supplemental only", mutate: func(testCase *Case) { testCase.OracleType = "golden-trace" }, wantFail: true},
 		{name: "unsorted tags", mutate: func(testCase *Case) { testCase.CoverageTags = []string{"z", "a"} }, wantFail: true},
 		{name: "incomplete outcome", mutate: func(testCase *Case) {
 			value := contract.OutcomeCalled

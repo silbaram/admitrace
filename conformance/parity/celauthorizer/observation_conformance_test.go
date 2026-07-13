@@ -20,13 +20,19 @@ import (
 func TestKubeAPIServerObservations(t *testing.T) {
 	harness := startHarness(t)
 	tests := []struct {
-		name       string
-		expression string
+		name          string
+		conditions    []admissionregistrationv1.MatchCondition
+		failurePolicy admissionregistrationv1.FailurePolicyType
 	}{
 		{name: "cel-no-conditions"},
-		{name: "cel-true", expression: "true"},
-		{name: "cel-false", expression: "false"},
-		{name: "cel-runtime-fail", expression: "object.metadata.labels['missing'] == 'required'"},
+		{name: "cel-true", conditions: conditions(condition("true", "true"))},
+		{name: "cel-false", conditions: conditions(condition("false", "false"))},
+		{name: "cel-false-overrides-error", conditions: conditions(
+			condition("error", "object.metadata.labels['missing'] == 'required'"),
+			condition("false", "false"),
+		)},
+		{name: "cel-runtime-fail", conditions: conditions(condition("runtime", "object.metadata.labels['missing'] == 'required'"))},
+		{name: "cel-runtime-ignore", conditions: conditions(condition("runtime", "object.metadata.labels['missing'] == 'required'")), failurePolicy: admissionregistrationv1.Ignore},
 	}
 	for index, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -55,7 +61,8 @@ func TestKubeAPIServerObservations(t *testing.T) {
 				Version:         "v1",
 				Resource:        "configmaps",
 				MatchPolicy:     admissionregistrationv1.Exact,
-				MatchExpression: test.expression,
+				FailurePolicy:   test.failurePolicy,
+				MatchConditions: test.conditions,
 			})
 			if err != nil {
 				t.Fatal(err)

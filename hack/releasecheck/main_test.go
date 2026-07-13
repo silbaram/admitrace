@@ -16,7 +16,7 @@ func TestValidateParity(t *testing.T) {
 		{name: "too few cases", mutate: func(report *parityReport) {
 			report.Cases = report.Cases[:19]
 			report.Summary.TotalCases = 19
-		}, want: "at least 20"},
+		}, want: "want 33"},
 		{name: "semantic mismatch", mutate: func(report *parityReport) {
 			report.Summary.FailureCounts.SemanticMismatch = 1
 		}, want: "want all zero"},
@@ -26,16 +26,26 @@ func TestValidateParity(t *testing.T) {
 		{name: "missing phase", mutate: func(report *parityReport) {
 			report.Phases = report.Phases[1:]
 		}, want: "is missing"},
+		{name: "multiple missing phases are deterministic", mutate: func(report *parityReport) {
+			report.Phases = report.Phases[2:]
+		}, want: `phase "offline-contracts" is missing`},
 		{name: "duplicate case", mutate: func(report *parityReport) {
 			report.Cases[1].ID = report.Cases[0].ID
 		}, want: "is duplicated"},
+		{name: "unapproved oracle", mutate: func(report *parityReport) {
+			report.Cases[0].OracleType = "golden-trace"
+		}, want: "approved independent"},
+		{name: "oracle summary false pass", mutate: func(report *parityReport) {
+			report.Summary.OracleTypeCounts.KubeAPIServerObservation--
+		}, want: "oracle coverage"},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			report := valid
 			report.Cases = append([]struct {
-				ID string `json:"id"`
+				ID         string `json:"id"`
+				OracleType string `json:"oracleType"`
 			}{}, valid.Cases...)
 			report.Phases = append([]struct {
 				Name              string `json:"name"`
@@ -83,29 +93,41 @@ func validParityReport() parityReport {
 		ProfileID:     "kubernetes-1.36.2-defaults",
 		Status:        "passed",
 	}
-	report.Summary.TotalCases = 20
-	for index := range 20 {
-		report.Cases = append(report.Cases, struct {
-			ID string `json:"id"`
-		}{ID: "case-" + string(rune('a'+index))})
+	report.Summary.TotalCases = 33
+	report.Summary.OracleTypeCounts = oracleCounts{
+		KubeAPIServerObservation:              21,
+		OfficialKubernetesMatcherDifferential: 8,
+		IncompleteContract:                    4,
 	}
-	for _, name := range []string{
-		"offline-contracts",
-		"core-kube-apiserver-observations",
-		"equivalent-kube-apiserver-observation",
-		"cel-kube-apiserver-observations",
-		"matrix-execution-coverage",
-	} {
-		count := 1
-		if name == "matrix-execution-coverage" {
-			count = report.Summary.TotalCases
+	for index := range 33 {
+		oracleType := "incomplete-contract"
+		if index < 21 {
+			oracleType = "kube-apiserver-observation"
+		} else if index < 29 {
+			oracleType = "official-kubernetes-matcher-differential"
 		}
+		report.Cases = append(report.Cases, struct {
+			ID         string `json:"id"`
+			OracleType string `json:"oracleType"`
+		}{ID: "case-" + string(rune('a'+index)), OracleType: oracleType})
+	}
+	for _, entry := range []struct {
+		name  string
+		count int
+	}{
+		{name: "offline-contracts", count: 20},
+		{name: "official-kubernetes-matcher-differential", count: 8},
+		{name: "core-kube-apiserver-observations", count: 13},
+		{name: "equivalent-kube-apiserver-observation", count: 2},
+		{name: "cel-kube-apiserver-observations", count: 6},
+		{name: "matrix-execution-coverage", count: 33},
+	} {
 		report.Phases = append(report.Phases, struct {
 			Name              string `json:"name"`
 			Status            string `json:"status"`
 			ExpectedCaseCount int    `json:"expectedCaseCount"`
 			ExecutedCaseCount int    `json:"executedCaseCount"`
-		}{Name: name, Status: "passed", ExpectedCaseCount: count, ExecutedCaseCount: count})
+		}{Name: entry.name, Status: "passed", ExpectedCaseCount: entry.count, ExecutedCaseCount: entry.count})
 	}
 	return report
 }

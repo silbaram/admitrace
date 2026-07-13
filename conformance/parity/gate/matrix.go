@@ -53,9 +53,9 @@ var requiredTags = []string{
 }
 
 var validOracleTypes = []string{
-	"golden-trace",
 	"incomplete-contract",
 	"kube-apiserver-observation",
+	"official-kubernetes-matcher-differential",
 }
 
 var validConfigurationKinds = []string{
@@ -201,6 +201,17 @@ func (matrix Matrix) ObservationCount(suite string) int {
 	count := 0
 	for _, testCase := range matrix.Cases {
 		if testCase.Suite == suite && testCase.OracleType == "kube-apiserver-observation" {
+			count++
+		}
+	}
+	return count
+}
+
+// OracleTypeCount returns the number of fixtures assigned to one oracle kind.
+func (matrix Matrix) OracleTypeCount(oracleType string) int {
+	count := 0
+	for _, testCase := range matrix.Cases {
+		if testCase.OracleType == oracleType {
 			count++
 		}
 	}

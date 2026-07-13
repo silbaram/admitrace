@@ -19,8 +19,9 @@ const (
 	// OracleKubeAPIServerObservation uses a call, skip, or pre-call rejection
 	// observed from a Kubernetes 1.36.2 API server.
 	OracleKubeAPIServerObservation OracleType = "kube-apiserver-observation"
-	// OracleGoldenTrace uses a reviewed Kubernetes-derived terminal trace.
-	OracleGoldenTrace OracleType = "golden-trace"
+	// OracleOfficialMatcherDifferential compares the product decision with the
+	// official Kubernetes 1.36.2 matcher in the test-only conformance module.
+	OracleOfficialMatcherDifferential OracleType = "official-kubernetes-matcher-differential"
 	// OracleIncompleteContract records behavior that cannot produce an outcome
 	// without fixture context or unsupported semantics.
 	OracleIncompleteContract OracleType = "incomplete-contract"
@@ -124,8 +125,8 @@ func ValidateCases(group string, cases []Case) error {
 		if err := validateExpectedResult(name, testCase.Expected); err != nil {
 			return err
 		}
-		if testCase.OracleType == OracleGoldenTrace && len(testCase.Expected.Trace) == 0 {
-			return fmt.Errorf("scenario %q golden trace is required", name)
+		if testCase.OracleType == OracleOfficialMatcherDifferential && len(testCase.Expected.Trace) == 0 {
+			return fmt.Errorf("scenario %q supplemental golden trace is required", name)
 		}
 		if testCase.OracleType == OracleIncompleteContract {
 			if testCase.Expected.Determination == contract.DeterminationDeterminate {
@@ -190,7 +191,7 @@ func CoverageReport(cases []Case) []string {
 
 func (oracleType OracleType) valid() bool {
 	switch oracleType {
-	case OracleKubeAPIServerObservation, OracleGoldenTrace, OracleIncompleteContract:
+	case OracleKubeAPIServerObservation, OracleOfficialMatcherDifferential, OracleIncompleteContract:
 		return true
 	default:
 		return false

@@ -54,8 +54,8 @@ func TestFailuresAreCountedWithoutCollapsingCategories(t *testing.T) {
 	if got, want := counts.SemanticMismatch, 1; got != want {
 		t.Errorf("semantic mismatches = %d, want %d", got, want)
 	}
-	if got, want := counts.GoldenContractFailure, 1; got != want {
-		t.Errorf("golden contract failures = %d, want %d", got, want)
+	if got, want := counts.DifferentialContractFailure, 1; got != want {
+		t.Errorf("differential contract failures = %d, want %d", got, want)
 	}
 	if got, want := counts.IncompleteContractFailure, 1; got != want {
 		t.Errorf("incomplete contract failures = %d, want %d", got, want)
@@ -125,7 +125,7 @@ func TestMatrixExecutionResultReportsMissingCasesAfterSetupFailure(t *testing.T)
 	if got, want := len(result.FailedCases), len(matrix.Cases); got != want {
 		t.Errorf("missing case count = %d, want %d", got, want)
 	}
-	if got, want := result.MissingCaseCounts.KubeAPIServerObservation, 18; got != want {
+	if got, want := result.MissingCaseCounts.KubeAPIServerObservation, 21; got != want {
 		t.Errorf("missing API server observations = %d, want %d", got, want)
 	}
 	if got := result.Failures.total(); got != 0 {

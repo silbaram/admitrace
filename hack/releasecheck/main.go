@@ -17,11 +17,17 @@ const (
 )
 
 type failureCounts struct {
-	SetupFailure              int `json:"setupFailure"`
-	SemanticMismatch          int `json:"semanticMismatch"`
-	GoldenContractFailure     int `json:"goldenContractFailure"`
-	IncompleteContractFailure int `json:"incompleteContractFailure"`
-	OtherContractFailure      int `json:"otherContractFailure"`
+	SetupFailure                int `json:"setupFailure"`
+	SemanticMismatch            int `json:"semanticMismatch"`
+	DifferentialContractFailure int `json:"differentialContractFailure"`
+	IncompleteContractFailure   int `json:"incompleteContractFailure"`
+	OtherContractFailure        int `json:"otherContractFailure"`
+}
+
+type oracleCounts struct {
+	KubeAPIServerObservation              int `json:"kubeAPIServerObservation"`
+	OfficialKubernetesMatcherDifferential int `json:"officialKubernetesMatcherDifferential"`
+	IncompleteContract                    int `json:"incompleteContract"`
 }
 
 type parityReport struct {
@@ -30,11 +36,13 @@ type parityReport struct {
 	ProfileID     string `json:"profileId"`
 	Status        string `json:"status"`
 	Summary       struct {
-		TotalCases    int           `json:"totalCases"`
-		FailureCounts failureCounts `json:"failureCounts"`
+		TotalCases       int           `json:"totalCases"`
+		OracleTypeCounts oracleCounts  `json:"oracleTypeCounts"`
+		FailureCounts    failureCounts `json:"failureCounts"`
 	} `json:"summary"`
 	Cases []struct {
-		ID string `json:"id"`
+		ID         string `json:"id"`
+		OracleType string `json:"oracleType"`
 	} `json:"cases"`
 	Phases []struct {
 		Name              string `json:"name"`
@@ -85,7 +93,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("release evidence: passed (%d parity cases, 0 semantic mismatches, %d beta projects)\n", parity.Summary.TotalCases, beta.Summary.Projects)
+	fmt.Printf(
+		"release evidence: passed (%d parity cases: 21 direct, 8 official matcher differential, 4 incomplete; 0 mismatches; %d beta projects)\n",
+		parity.Summary.TotalCases,
+		beta.Summary.Projects,
+	)
 }
 
 func decodeJSONFile(path string, target any) error {
@@ -117,14 +129,15 @@ func validateParity(report parityReport) error {
 	if report.Status != "passed" {
 		return fmt.Errorf("parity status = %q, want passed", report.Status)
 	}
-	if report.Summary.TotalCases < 20 || report.Summary.TotalCases != len(report.Cases) {
-		return fmt.Errorf("parity case count = summary %d, cases %d; want equal counts of at least 20", report.Summary.TotalCases, len(report.Cases))
+	if report.Summary.TotalCases != 33 || report.Summary.TotalCases != len(report.Cases) {
+		return fmt.Errorf("parity case count = summary %d, cases %d; want 33", report.Summary.TotalCases, len(report.Cases))
 	}
 	if report.Summary.FailureCounts != (failureCounts{}) {
 		return fmt.Errorf("parity failure counts = %+v, want all zero", report.Summary.FailureCounts)
 	}
 
 	caseIDs := make(map[string]struct{}, len(report.Cases))
+	actualOracleCounts := oracleCounts{}
 	for _, testCase := range report.Cases {
 		if testCase.ID == "" {
 			return errors.New("parity case id is empty")
@@ -133,37 +146,59 @@ func validateParity(report parityReport) error {
 			return fmt.Errorf("parity case id %q is duplicated", testCase.ID)
 		}
 		caseIDs[testCase.ID] = struct{}{}
+		switch testCase.OracleType {
+		case "kube-apiserver-observation":
+			actualOracleCounts.KubeAPIServerObservation++
+		case "official-kubernetes-matcher-differential":
+			actualOracleCounts.OfficialKubernetesMatcherDifferential++
+		case "incomplete-contract":
+			actualOracleCounts.IncompleteContract++
+		default:
+			return fmt.Errorf("parity case %q oracleType = %q, want an approved independent or incomplete oracle", testCase.ID, testCase.OracleType)
+		}
+	}
+	wantOracleCounts := oracleCounts{
+		KubeAPIServerObservation:              21,
+		OfficialKubernetesMatcherDifferential: 8,
+		IncompleteContract:                    4,
+	}
+	if report.Summary.OracleTypeCounts != wantOracleCounts || actualOracleCounts != wantOracleCounts {
+		return fmt.Errorf("parity oracle coverage = summary %+v, cases %+v; want %+v", report.Summary.OracleTypeCounts, actualOracleCounts, wantOracleCounts)
 	}
 
-	requiredPhases := []string{
-		"offline-contracts",
-		"core-kube-apiserver-observations",
-		"equivalent-kube-apiserver-observation",
-		"cel-kube-apiserver-observations",
-		"matrix-execution-coverage",
+	requiredPhases := []struct {
+		name  string
+		count int
+	}{
+		{name: "offline-contracts", count: 20},
+		{name: "official-kubernetes-matcher-differential", count: 8},
+		{name: "core-kube-apiserver-observations", count: 13},
+		{name: "equivalent-kube-apiserver-observation", count: 2},
+		{name: "cel-kube-apiserver-observations", count: 6},
+		{name: "matrix-execution-coverage", count: 33},
+	}
+	requiredPhaseCounts := make(map[string]int, len(requiredPhases))
+	for _, requirement := range requiredPhases {
+		requiredPhaseCounts[requirement.name] = requirement.count
 	}
 	seenPhases := make(map[string]bool, len(requiredPhases))
 	for _, phase := range report.Phases {
 		if phase.Status != "passed" || phase.ExpectedCaseCount != phase.ExecutedCaseCount {
 			return fmt.Errorf("parity phase %q = status %q, executed %d/%d", phase.Name, phase.Status, phase.ExecutedCaseCount, phase.ExpectedCaseCount)
 		}
-		for _, required := range requiredPhases {
-			if phase.Name != required {
-				continue
-			}
+		if expected, required := requiredPhaseCounts[phase.Name]; required {
 			if seenPhases[phase.Name] {
 				return fmt.Errorf("parity phase %q is duplicated", phase.Name)
 			}
 			seenPhases[phase.Name] = true
-			if phase.Name == "matrix-execution-coverage" && phase.ExecutedCaseCount != report.Summary.TotalCases {
-				return fmt.Errorf("parity matrix phase executed %d cases, want %d", phase.ExecutedCaseCount, report.Summary.TotalCases)
+			if phase.ExecutedCaseCount != expected {
+				return fmt.Errorf("parity phase %q executed %d cases, want %d", phase.Name, phase.ExecutedCaseCount, expected)
 			}
-			break
 		}
 	}
-	for _, name := range requiredPhases {
-		if !seenPhases[name] {
-			return fmt.Errorf("parity phase %q is missing", name)
+	for _, requirement := range requiredPhases {
+		if !seenPhases[requirement.name] {
+			return fmt.Errorf("parity phase %q is missing", requirement.name)
 		}
 	}
 	return nil

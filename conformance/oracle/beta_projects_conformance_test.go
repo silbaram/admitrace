@@ -14,6 +14,7 @@ import (
 	"github.com/silbaram/admitrace/internal/contract"
 	"github.com/silbaram/admitrace/internal/evaluation"
 	"github.com/silbaram/admitrace/internal/scenario"
+	admissionv1 "k8s.io/api/admission/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -47,7 +48,11 @@ func TestBetaProjectParity(t *testing.T) {
 				if err := recorder.Err(); err != nil {
 					t.Fatal(err)
 				}
-				calls := recorder.Snapshot()
+				allCalls := recorder.Snapshot()
+				calls := betaTargetReviews(allCalls, input.Request)
+				if unrelated := len(allCalls) - len(calls); unrelated > 0 {
+					t.Logf("Webhook %q ignored %d unrelated API server call(s)", product.Webhooks[index].WebhookName, unrelated)
+				}
 				lastReview := RecordedReview{}
 				if len(calls) > 0 {
 					lastReview = calls[len(calls)-1]
@@ -79,6 +84,43 @@ func TestBetaProjectParity(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBetaTargetReviews(t *testing.T) {
+	request := contract.AdmissionRequest{
+		Operation: admissionv1.Create,
+		Resource:  metav1.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
+		Namespace: "beta-gatekeeper",
+		Name:      "beta-workload",
+	}
+	target := RecordedReview{
+		UID: "target", Operation: request.Operation, Resource: request.Resource,
+		Namespace: request.Namespace, Name: request.Name,
+	}
+	unrelated := RecordedReview{
+		UID: "unrelated", Operation: admissionv1.Create,
+		Resource:  metav1.GroupVersionResource{Version: "v1", Resource: "endpoints"},
+		Namespace: "default", Name: "kubernetes",
+	}
+
+	got := betaTargetReviews([]RecordedReview{unrelated, target}, request)
+	if len(got) != 1 || got[0] != target {
+		t.Fatalf("betaTargetReviews() = %#v, want [%#v]", got, target)
+	}
+}
+
+func betaTargetReviews(calls []RecordedReview, request contract.AdmissionRequest) []RecordedReview {
+	result := make([]RecordedReview, 0, len(calls))
+	for _, call := range calls {
+		if call.Operation != request.Operation ||
+			call.Resource != request.Resource ||
+			call.Namespace != request.Namespace ||
+			call.Name != request.Name {
+			continue
+		}
+		result = append(result, call)
+	}
+	return result
 }
 
 func betaScenarioPath(name string) string {

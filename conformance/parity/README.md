@@ -8,8 +8,10 @@ Task 021 keeps advanced fixtures in two independent groups:
 Every `parity.Case` declares exactly one closed `oracleType`:
 
 - `kube-apiserver-observation` records a Kubernetes 1.36.2 call, skip, or rejection using the envtest control plane.
-- `golden-trace` compares the complete stable trace subset with reviewed Kubernetes-derived expectations.
+- `official-kubernetes-matcher-differential` compares the product outcome with the official Kubernetes `v0.36.2` matcher or predicate path in the test-only conformance module.
 - `incomplete-contract` requires a nil outcome plus an expected diagnostic and terminal trace because context is missing or semantics are unsupported.
+
+The 29 determinate cases require independent authority: 21 direct API server observations and 8 official matcher differentials. Reviewed golden traces remain supplemental checks for stable explanation details; they are never the sole release authority.
 
 Coverage tags are sorted and reported with the deterministic Scenario count. Run each group separately from the repository root:
 
@@ -30,4 +32,4 @@ Run the release gate from the repository root:
 KUBEBUILDER_ASSETS=/path/to/kubernetes/1.36.2/assets ./hack/test-parity-gate.sh
 ```
 
-Set `PARITY_REPORT` to choose the report path. The default is `${TMPDIR}/admitrace-parity-kubernetes-1.36.2.json`. The report has no timestamp, duration, host path, or other nondeterministic field. It reports setup failures, determinate kube-apiserver semantic mismatches, golden contract failures, incomplete contract failures, and other contract failures separately. The gate passes only when all 18 determinate API server observations match and all offline contracts pass.
+Set `PARITY_REPORT` to choose the report path. The default is `${TMPDIR}/admitrace-parity-kubernetes-1.36.2.json`. The report has no timestamp, duration, host path, or other nondeterministic field. It reports setup failures, determinate kube-apiserver semantic mismatches, official matcher differential failures, incomplete contract failures, and other contract failures separately. The gate passes only when all 21 direct observations and all 8 official matcher differentials execute and agree, all 4 incomplete contracts remain explicitly incomplete, and all supplemental offline contracts pass.

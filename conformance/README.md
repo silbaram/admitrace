@@ -10,6 +10,8 @@ The harness is pinned to:
 - Kubernetes Go modules `v0.36.2`
 - Kubernetes control-plane assets `1.36.2`
 
+Release parity uses two independent test-only oracle tiers: 21 direct control-plane observations and 8 differentials through official Kubernetes `v0.36.2` matcher or predicate packages. The production module does not gain conformance-only clients or envtest dependencies.
+
 The suite never downloads binaries. Set `KUBEBUILDER_ASSETS` to a directory
 containing executable `kube-apiserver` and `etcd` binaries. The harness executes
 `kube-apiserver --version` before startup and rejects every version other than

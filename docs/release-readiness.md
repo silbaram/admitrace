@@ -21,8 +21,9 @@ The command exits zero only after every item below passes.
 - [x] The production dependency graph excludes the `k8s.io/kubernetes` root module, envtest, controller-runtime, live clients, listeners, and network dialers.
 - [x] A standalone `admitrace` binary runs `version`, Validating and Mutating `explain`, and directory `test` smoke cases without runtime network access.
 - [x] Repeated standalone JSON `explain` and `test` output is byte-identical.
-- [x] The Kubernetes `1.36.2` parity matrix contains at least 20 cases and its report records zero semantic mismatches.
+- [x] All 29 determinate parity cases have independent Kubernetes `1.36.2` authority: 21 direct API server observations plus 8 official matcher differentials; 4 incomplete contracts remain separate.
+- [x] The parity report records exact oracle-kind coverage and zero semantic or differential mismatches; a reviewed golden trace cannot pass a case by itself.
 - [x] The complete conformance suite and both public beta project cases pass against the pinned local API server.
 - [x] The support policy, Mutating initial-snapshot limitation, and explicit non-goals remain documented.
 
-The envtest API server and loopback TLS recorders are development oracles used only by the release gate. The standalone product still performs no live cluster lookup or Webhook transport. A passing gate does not expand v0.1 into response evaluation, patch application, reinvocation, live snapshot capture, or project-specific adapters.
+The envtest API server, loopback TLS recorders, and official Kubernetes matcher differentials are development oracles used only by the release gate. The standalone product still performs no live cluster lookup or Webhook transport. A passing gate does not expand v0.1 into response evaluation, patch application, reinvocation, live snapshot capture, or project-specific adapters.

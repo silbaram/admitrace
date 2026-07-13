@@ -18,16 +18,16 @@ func TestEmbeddedMatrix(t *testing.T) {
 	if got, want := matrix.ObservationCount("core"), 13; got != want {
 		t.Errorf("core observation count = %d, want %d", got, want)
 	}
-	if got, want := matrix.ObservationCount("equivalent-selector"), 1; got != want {
+	if got, want := matrix.ObservationCount("equivalent-selector"), 2; got != want {
 		t.Errorf("equivalent observation count = %d, want %d", got, want)
 	}
-	if got, want := matrix.ObservationCount("cel-authorizer"), 4; got != want {
+	if got, want := matrix.ObservationCount("cel-authorizer"), 6; got != want {
 		t.Errorf("CEL observation count = %d, want %d", got, want)
 	}
 	wantOracleCounts := map[string]int{
-		"golden-trace":               11,
-		"incomplete-contract":        4,
-		"kube-apiserver-observation": 18,
+		"incomplete-contract":                      4,
+		"kube-apiserver-observation":               21,
+		"official-kubernetes-matcher-differential": 8,
 	}
 	for oracleType, want := range wantOracleCounts {
 		if got := matrix.OracleCounts()[oracleType]; got != want {
@@ -51,6 +51,7 @@ func TestValidateRejectsCoverageContractViolations(t *testing.T) {
 			}
 		}, want: "coverage tag \"failure-policy:ignore\" is missing"},
 		{name: "open oracle", edit: func(matrix *Matrix) { matrix.Cases[0].OracleType = "external" }, want: "registered type"},
+		{name: "golden trace is supplemental only", edit: func(matrix *Matrix) { matrix.Cases[0].OracleType = "golden-trace" }, want: "registered type"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

@@ -30,7 +30,9 @@ type Configuration struct {
 	Version         string
 	Resource        string
 	MatchPolicy     admissionregistrationv1.MatchPolicyType
+	FailurePolicy   admissionregistrationv1.FailurePolicyType
 	MatchExpression string
+	MatchConditions []admissionregistrationv1.MatchCondition
 }
 
 // InstallConfiguration creates and tracks exactly one Webhook configuration.
@@ -42,7 +44,10 @@ func (h *Harness) InstallConfiguration(ctx context.Context, configuration Config
 	if matchPolicy == "" {
 		matchPolicy = admissionregistrationv1.Exact
 	}
-	failurePolicy := admissionregistrationv1.Fail
+	failurePolicy := configuration.FailurePolicy
+	if failurePolicy == "" {
+		failurePolicy = admissionregistrationv1.Fail
+	}
 	sideEffects := admissionregistrationv1.SideEffectClassNone
 	clientConfig := admissionregistrationv1.WebhookClientConfig{
 		URL:      &configuration.URL,
@@ -56,8 +61,11 @@ func (h *Harness) InstallConfiguration(ctx context.Context, configuration Config
 			Resources:   []string{configuration.Resource},
 		},
 	}}
-	conditions := []admissionregistrationv1.MatchCondition(nil)
+	conditions := append([]admissionregistrationv1.MatchCondition(nil), configuration.MatchConditions...)
 	if configuration.MatchExpression != "" {
+		if len(conditions) > 0 {
+			return nil, &SetupError{Stage: SetupResource, Err: fmt.Errorf("match expression and match conditions are mutually exclusive")}
+		}
 		conditions = []admissionregistrationv1.MatchCondition{{
 			Name:       "admitrace-oracle",
 			Expression: configuration.MatchExpression,

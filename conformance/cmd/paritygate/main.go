@@ -26,12 +26,11 @@ type options struct {
 }
 
 type phase struct {
-	name            string
-	suite           string
-	testRoot        string
-	countRootAsCase bool
-	rootCaseID      string
-	args            []string
+	name       string
+	suite      string
+	oracleType string
+	testRoot   string
+	args       []string
 }
 
 type testEvent struct {
@@ -40,17 +39,17 @@ type testEvent struct {
 }
 
 type oracleCounts struct {
-	KubeAPIServerObservation int `json:"kubeAPIServerObservation"`
-	GoldenTrace              int `json:"goldenTrace"`
-	IncompleteContract       int `json:"incompleteContract"`
+	KubeAPIServerObservation              int `json:"kubeAPIServerObservation"`
+	OfficialKubernetesMatcherDifferential int `json:"officialKubernetesMatcherDifferential"`
+	IncompleteContract                    int `json:"incompleteContract"`
 }
 
 type failureCounts struct {
-	SetupFailure              int `json:"setupFailure"`
-	SemanticMismatch          int `json:"semanticMismatch"`
-	GoldenContractFailure     int `json:"goldenContractFailure"`
-	IncompleteContractFailure int `json:"incompleteContractFailure"`
-	OtherContractFailure      int `json:"otherContractFailure"`
+	SetupFailure                int `json:"setupFailure"`
+	SemanticMismatch            int `json:"semanticMismatch"`
+	DifferentialContractFailure int `json:"differentialContractFailure"`
+	IncompleteContractFailure   int `json:"incompleteContractFailure"`
+	OtherContractFailure        int `json:"otherContractFailure"`
 }
 
 type phaseResult struct {
@@ -164,13 +163,18 @@ func releasePhases() []phase {
 			args: []string{"test", "-json", "-count=1", "-mod=readonly", "./oracle", "./parity/..."},
 		},
 		{
+			name: "official-kubernetes-matcher-differential", oracleType: "official-kubernetes-matcher-differential",
+			testRoot: "TestOfficialMatcherDifferential",
+			args:     []string{"test", "-json", "-count=1", "-mod=readonly", "-run", "^TestOfficialMatcherDifferential$", "./parity/equivalentselector", "./parity/celauthorizer"},
+		},
+		{
 			name: "core-kube-apiserver-observations", suite: "core", testRoot: "TestCoreRulesAndSelectorsParity",
 			args: []string{"test", "-json", "-count=1", "-mod=readonly", "-tags=conformance", "-run", "^TestCoreRulesAndSelectorsParity$", "./oracle"},
 		},
 		{
 			name: "equivalent-kube-apiserver-observation", suite: "equivalent-selector",
-			testRoot: "TestKubeAPIServerObservations", countRootAsCase: true, rootCaseID: "equivalent-explicit-mapping",
-			args: []string{"test", "-json", "-count=1", "-mod=readonly", "-tags=conformance", "-run", "^TestKubeAPIServerObservations$", "./parity/equivalentselector"},
+			testRoot: "TestKubeAPIServerObservations",
+			args:     []string{"test", "-json", "-count=1", "-mod=readonly", "-tags=conformance", "-run", "^TestKubeAPIServerObservations$", "./parity/equivalentselector"},
 		},
 		{
 			name: "cel-kube-apiserver-observations", suite: "cel-authorizer", testRoot: "TestKubeAPIServerObservations",
@@ -249,9 +253,6 @@ func executedCaseIDs(events []testEvent, current phase, matrix gate.Matrix) []st
 	for _, event := range events {
 		if event.Action != "run" {
 			continue
-		}
-		if current.countRootAsCase && event.Test == current.testRoot {
-			seen[current.rootCaseID] = struct{}{}
 		}
 		if !strings.Contains(event.Test, "/") {
 			continue
@@ -332,8 +333,8 @@ func classifyFailures(commandErr error, output []byte, failed []string, matrix g
 				continue
 			}
 			switch oracleType {
-			case "golden-trace":
-				counts.GoldenContractFailure++
+			case "official-kubernetes-matcher-differential":
+				counts.DifferentialContractFailure++
 			case "incomplete-contract":
 				counts.IncompleteContractFailure++
 			default:
@@ -368,6 +369,9 @@ func commandStartFailed(err error) bool {
 }
 
 func expectedCaseCount(current phase, matrix gate.Matrix) int {
+	if current.oracleType != "" {
+		return matrix.OracleTypeCount(current.oracleType)
+	}
 	if current.suite != "" {
 		return matrix.ObservationCount(current.suite)
 	}
@@ -423,8 +427,8 @@ func matrixExecutionResult(phases []phaseResult, matrix gate.Matrix, prerequisit
 
 func addMissingCaseCount(counts *oracleCounts, oracleType string) {
 	switch oracleType {
-	case "golden-trace":
-		counts.GoldenTrace++
+	case "official-kubernetes-matcher-differential":
+		counts.OfficialKubernetesMatcherDifferential++
 	case "incomplete-contract":
 		counts.IncompleteContract++
 	default:
@@ -434,8 +438,8 @@ func addMissingCaseCount(counts *oracleCounts, oracleType string) {
 
 func addMissingCaseFailure(counts *failureCounts, oracleType string) {
 	switch oracleType {
-	case "golden-trace":
-		counts.GoldenContractFailure++
+	case "official-kubernetes-matcher-differential":
+		counts.DifferentialContractFailure++
 	case "incomplete-contract":
 		counts.IncompleteContractFailure++
 	default:
@@ -446,7 +450,7 @@ func addMissingCaseFailure(counts *failureCounts, oracleType string) {
 func addFailures(total *failureCounts, add failureCounts) {
 	total.SetupFailure += add.SetupFailure
 	total.SemanticMismatch += add.SemanticMismatch
-	total.GoldenContractFailure += add.GoldenContractFailure
+	total.DifferentialContractFailure += add.DifferentialContractFailure
 	total.IncompleteContractFailure += add.IncompleteContractFailure
 	total.OtherContractFailure += add.OtherContractFailure
 }
@@ -459,8 +463,8 @@ func categories(counts failureCounts) []string {
 	if counts.SemanticMismatch > 0 {
 		result = append(result, "semantic-mismatch")
 	}
-	if counts.GoldenContractFailure > 0 {
-		result = append(result, "golden-contract-failure")
+	if counts.DifferentialContractFailure > 0 {
+		result = append(result, "differential-contract-failure")
 	}
 	if counts.IncompleteContractFailure > 0 {
 		result = append(result, "incomplete-contract-failure")
@@ -472,7 +476,7 @@ func categories(counts failureCounts) []string {
 }
 
 func (counts failureCounts) total() int {
-	return counts.SetupFailure + counts.SemanticMismatch + counts.GoldenContractFailure + counts.IncompleteContractFailure + counts.OtherContractFailure
+	return counts.SetupFailure + counts.SemanticMismatch + counts.DifferentialContractFailure + counts.IncompleteContractFailure + counts.OtherContractFailure
 }
 
 func newReport(matrix gate.Matrix) report {
@@ -488,9 +492,9 @@ func newReport(matrix gate.Matrix) report {
 		Summary: summary{
 			TotalCases: len(matrix.Cases),
 			OracleTypeCounts: oracleCounts{
-				KubeAPIServerObservation: counts["kube-apiserver-observation"],
-				GoldenTrace:              counts["golden-trace"],
-				IncompleteContract:       counts["incomplete-contract"],
+				KubeAPIServerObservation:              counts["kube-apiserver-observation"],
+				OfficialKubernetesMatcherDifferential: counts["official-kubernetes-matcher-differential"],
+				IncompleteContract:                    counts["incomplete-contract"],
 			},
 		},
 	}

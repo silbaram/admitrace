@@ -111,8 +111,8 @@ func cases() []parity.Case {
 		{
 			Group:           groupName,
 			Scenario:        exactFirstScenario(),
-			OracleType:      parity.OracleGoldenTrace,
-			OracleRationale: "the exact pass is locally replayed before any provided equivalence mapping is consulted",
+			OracleType:      parity.OracleKubeAPIServerObservation,
+			OracleRationale: "a same-version Kubernetes 1.36.2 API server request observes the exact rule winning before equivalence",
 			CoverageTags:    []string{"equivalent", "exact-first", "validating"},
 			Expected: parity.ExpectedResult{
 				Determination: contract.DeterminationDeterminate,
@@ -179,8 +179,8 @@ func cases() []parity.Case {
 		{
 			Group:           groupName,
 			Scenario:        selectorScenario("selector-pending-error-discarded", false),
-			OracleType:      parity.OracleGoldenTrace,
-			OracleRationale: "Kubernetes defers selector lookup errors and discards them when no rule applies",
+			OracleType:      parity.OracleOfficialMatcherDifferential,
+			OracleRationale: "the official Kubernetes 1.36.2 Webhook matcher discards a pending namespace selector error when no rule applies",
 			CoverageTags:    []string{"pending-selector-discarded", "rule-no-match", "selector"},
 			Expected: parity.ExpectedResult{
 				Determination: contract.DeterminationDeterminate,
@@ -196,8 +196,8 @@ func cases() []parity.Case {
 		{
 			Group:           groupName,
 			Scenario:        selectorScenario("selector-applicable-error-rejected", true),
-			OracleType:      parity.OracleGoldenTrace,
-			OracleRationale: "an applicable rule makes the recorded selector evaluation error controlling before webhook transport",
+			OracleType:      parity.OracleOfficialMatcherDifferential,
+			OracleRationale: "the official Kubernetes 1.36.2 Webhook matcher returns the namespace selector error when a rule applies",
 			CoverageTags:    []string{"applicable-selector-error", "rejected-before-call", "selector"},
 			Expected: parity.ExpectedResult{
 				Determination: contract.DeterminationDeterminate,
