@@ -56,7 +56,7 @@ Expectation은 설정된 `webhookName`과 `determination`을 필수로 가지며
 
 ## 결과 계약
 
-JSON 결과 schema는 `admitrace.result/v1alpha1`입니다. 최상위에는 `scenarioId`, `compatibilityProfile`, `evaluationPhase`, `configurationKind`, 순서가 있는 `webhooks`, `diagnostics`가 있습니다. 각 Webhook 결과에는 `webhookName`, `webhookIndex`, `sourcePath`, `determination`, 선택적 `outcome`, `trace`, `diagnostics`가 있습니다.
+JSON 결과 schema는 `admitrace.result/v1alpha1`입니다. 최상위에는 `scenarioId`, `compatibilityProfile`, `evaluationPhase`, `configurationKind`, 순서가 있는 `webhooks`, `diagnostics`가 있습니다. 각 Webhook 결과에는 `webhookName`, `webhookIndex`, `configurationKind`, `sourcePath`, `determination`, 선택적 `outcome`, `trace`, `diagnostics`가 있습니다.
 
 | Determination | Outcome | 의미 |
 | --- | --- | --- |

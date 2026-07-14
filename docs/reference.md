@@ -112,7 +112,7 @@ expectations:
 | `webhooks` | Ordered independent Webhook results |
 | `diagnostics` | Result-level structured diagnostics |
 
-Each `webhooks[]` entry contains `webhookName`, `webhookIndex`, `sourcePath`, `determination`, optional `outcome`, ordered `trace`, and `diagnostics`.
+Each `webhooks[]` entry contains `webhookName`, `webhookIndex`, `configurationKind`, `sourcePath`, `determination`, optional `outcome`, ordered `trace`, and `diagnostics`.
 
 ### Determination and outcome
 

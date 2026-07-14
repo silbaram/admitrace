@@ -177,3 +177,7 @@ Kubernetes 버전 의존 코드는 `internal/compat/kube136` 뒤에 격리합니
 ## 버전 정책
 
 `kubernetes-1.36.2-defaults` profile은 해당 릴리스의 기본 feature gate를 사용하는 Kubernetes `1.36.2`만 의미합니다. 새 Kubernetes 버전은 별도 compatibility profile과 해당 정확한 버전의 parity 근거가 필요하며 기존 profile로 근사하지 않습니다.
+
+## 라이선스
+
+AdmiTrace는 Apache License 2.0으로 배포됩니다.
