@@ -136,6 +136,15 @@ type EvaluationResult struct {
 
 // Validate checks result vocabulary and the invariants of every nested evaluation.
 func (result EvaluationResult) Validate() error {
+	if !IsSupportedResultVersion(result.SchemaVersion) {
+		return &ValidationError{Field: "schemaVersion", Value: result.SchemaVersion, Err: ErrInvalidEnumValue}
+	}
+	if !IsSupportedCompatibilityProfile(result.CompatibilityProfile) {
+		return &ValidationError{Field: "compatibilityProfile", Value: result.CompatibilityProfile.ID, Err: ErrInvalidEnumValue}
+	}
+	if !result.ConfigurationKind.IsValid() {
+		return &ValidationError{Field: "configurationKind", Value: string(result.ConfigurationKind), Err: ErrInvalidEnumValue}
+	}
 	if !result.EvaluationPhase.IsValid() {
 		return &ValidationError{Field: "evaluationPhase", Value: string(result.EvaluationPhase), Err: ErrInvalidEnumValue}
 	}
@@ -146,6 +155,13 @@ func (result EvaluationResult) Validate() error {
 		return &ValidationError{Field: "evaluationPhase", Value: string(result.EvaluationPhase), Err: ErrInvalidEnumValue}
 	}
 	for i, evaluation := range result.Webhooks {
+		if evaluation.ConfigurationKind != result.ConfigurationKind {
+			return &ValidationError{
+				Field: fmt.Sprintf("webhooks[%d].configurationKind", i),
+				Value: string(evaluation.ConfigurationKind),
+				Err:   ErrConfigurationKindMismatch,
+			}
+		}
 		if err := evaluation.Validate(); err != nil {
 			return fmt.Errorf("webhooks[%d]: %w", i, err)
 		}

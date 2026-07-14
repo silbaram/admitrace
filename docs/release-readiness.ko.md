@@ -18,7 +18,7 @@ GO_BIN=/path/to/go1.26.5/bin/go ./hack/verify-release-readiness.sh
 - [x] root unit, golden, CLI process, resource-limit와 deterministic-output test 통과
 - [x] 필수 fuzz target 두 개가 선택 가능하고 실제 실행됨
 - [x] Go language `1.26.0`, toolchain `go1.26.5`, Cobra `v1.10.2`, Kubernetes module `v0.36.2`, envtest `v0.24.1`, control-plane `1.36.2` pin 확인
-- [x] production dependency graph에서 `k8s.io/kubernetes` root module, envtest, controller-runtime, live client, listener와 network dialer 부재 확인
+- [x] production dependency graph에서 `k8s.io/kubernetes` root module, envtest, controller-runtime, live client 호출, listener와 network dialer 부재 확인
 - [x] standalone `admitrace` binary로 `version`, Validating·Mutating `explain`, directory `test`를 runtime network 없이 smoke 검증
 - [x] standalone JSON `explain`과 `test` 반복 결과가 byte 단위로 동일함
 - [x] determinate parity 29건 모두 Kubernetes `1.36.2` 독립 근거 보유: API server 직접 관찰 21건과 공식 matcher differential 8건, incomplete contract 4건은 별도 유지

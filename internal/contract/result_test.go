@@ -80,27 +80,49 @@ func TestResultVocabulary(t *testing.T) {
 	}
 }
 
-func TestEvaluationResultRequiresConfigurationPhase(t *testing.T) {
+func TestEvaluationResultRequiresCanonicalEnvelope(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name  string
-		kind  contract.ConfigurationKind
-		phase contract.EvaluationPhase
-		valid bool
+		name      string
+		mutate    func(*contract.EvaluationResult)
+		valid     bool
+		wantError error
 	}{
-		{name: "validating snapshot", kind: contract.ConfigurationKindValidating, phase: contract.EvaluationPhaseSnapshotRouting, valid: true},
-		{name: "mutating initial snapshot", kind: contract.ConfigurationKindMutating, phase: contract.EvaluationPhaseMutatingInitialSnapshot, valid: true},
-		{name: "mutating generic snapshot", kind: contract.ConfigurationKindMutating, phase: contract.EvaluationPhaseSnapshotRouting},
-		{name: "validating mutating phase", kind: contract.ConfigurationKindValidating, phase: contract.EvaluationPhaseMutatingInitialSnapshot},
+		{name: "validating snapshot", valid: true},
+		{name: "mutating initial snapshot", mutate: func(result *contract.EvaluationResult) {
+			result.ConfigurationKind = contract.ConfigurationKindMutating
+			result.EvaluationPhase = contract.EvaluationPhaseMutatingInitialSnapshot
+		}, valid: true},
+		{name: "unsupported schema", mutate: func(result *contract.EvaluationResult) { result.SchemaVersion = "future" }},
+		{name: "unsupported profile", mutate: func(result *contract.EvaluationResult) { result.CompatibilityProfile.ID = "future" }},
+		{name: "unsupported configuration kind", mutate: func(result *contract.EvaluationResult) { result.ConfigurationKind = "OtherConfiguration" }},
+		{name: "webhook configuration kind mismatch", mutate: func(result *contract.EvaluationResult) {
+			result.Webhooks = []contract.WebhookEvaluation{{ConfigurationKind: contract.ConfigurationKindMutating}}
+		}, wantError: contract.ErrConfigurationKindMismatch},
+		{name: "mutating generic snapshot", mutate: func(result *contract.EvaluationResult) { result.ConfigurationKind = contract.ConfigurationKindMutating }},
+		{name: "validating mutating phase", mutate: func(result *contract.EvaluationResult) {
+			result.EvaluationPhase = contract.EvaluationPhaseMutatingInitialSnapshot
+		}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result := contract.EvaluationResult{ConfigurationKind: test.kind, EvaluationPhase: test.phase}
+			result := contract.EvaluationResult{
+				SchemaVersion:        contract.ResultSchemaVersion,
+				CompatibilityProfile: contract.Kubernetes136DefaultProfile(),
+				ConfigurationKind:    contract.ConfigurationKindValidating,
+				EvaluationPhase:      contract.EvaluationPhaseSnapshotRouting,
+			}
+			if test.mutate != nil {
+				test.mutate(&result)
+			}
 			err := result.Validate()
 			gotValid := err == nil
 			if gotValid != test.valid {
 				t.Errorf("Validate() valid = %t, want %t (error = %v)", gotValid, test.valid, err)
+			}
+			if test.wantError != nil && !errors.Is(err, test.wantError) {
+				t.Errorf("Validate() error = %v, want %v", err, test.wantError)
 			}
 		})
 	}
@@ -298,11 +320,15 @@ func TestEvaluationResultValidateWrapsStructuredError(t *testing.T) {
 	t.Parallel()
 
 	result := contract.EvaluationResult{
-		EvaluationPhase: contract.EvaluationPhaseSnapshotRouting,
+		SchemaVersion:        contract.ResultSchemaVersion,
+		CompatibilityProfile: contract.Kubernetes136DefaultProfile(),
+		ConfigurationKind:    contract.ConfigurationKindValidating,
+		EvaluationPhase:      contract.EvaluationPhaseSnapshotRouting,
 		Webhooks: []contract.WebhookEvaluation{
 			{
-				Determination: contract.DeterminationDeterminate,
-				Outcome:       outcomePointer(contract.OutcomeCalled),
+				ConfigurationKind: contract.ConfigurationKindValidating,
+				Determination:     contract.DeterminationDeterminate,
+				Outcome:           outcomePointer(contract.OutcomeCalled),
 				Trace: []contract.TraceStep{
 					{Result: contract.TraceResultTrue, ReasonCode: contract.ReasonCode("UNKNOWN"), Terminal: true},
 				},
