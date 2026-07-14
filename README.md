@@ -14,13 +14,7 @@ It evaluates `ValidatingWebhookConfiguration` and `MutatingWebhookConfiguration`
 Install the tagged release with Go:
 
 ```bash
-go install github.com/silbaram/admitrace/cmd/admitrace@v0.1.0
-```
-
-To install version `v1.0.2`, use:
-
-```bash
-go install github.com/silbaram/admitrace/cmd/admitrace@v1.0.2
+go install github.com/silbaram/admitrace/cmd/admitrace@v0.1.2
 ```
 
 Make sure `$(go env GOPATH)/bin` (or `GOBIN`) is on `PATH`, then verify the installation:
@@ -30,7 +24,7 @@ admitrace version
 admitrace --help
 ```
 
-Release source: [`v0.1.0`](https://github.com/silbaram/admitrace/tree/v0.1.0)
+Release source: [`v0.1.2`](https://github.com/silbaram/admitrace/tree/v0.1.2)
 
 ## Documentation
 
