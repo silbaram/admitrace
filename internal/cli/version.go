@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	goLanguageVersion  = "1.26"
+	goLanguageVersion  = "1.26.0"
 	goToolchainVersion = "go1.26.5"
 	envtestVersion     = "v0.24.1"
 )

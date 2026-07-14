@@ -17,6 +17,12 @@ Install the tagged release with Go:
 go install github.com/silbaram/admitrace/cmd/admitrace@v0.1.0
 ```
 
+To install version `v1.0.2`, use:
+
+```bash
+go install github.com/silbaram/admitrace/cmd/admitrace@v1.0.2
+```
+
 Make sure `$(go env GOPATH)/bin` (or `GOBIN`) is on `PATH`, then verify the installation:
 
 ```bash
@@ -177,3 +183,7 @@ Kubernetes-version-specific code is isolated behind `internal/compat/kube136`. T
 ## Version policy
 
 The profile `kubernetes-1.36.2-defaults` means exactly Kubernetes `1.36.2` with that release's default feature gates. A new Kubernetes version requires a separate compatibility profile and exact-version parity evidence; it is never routed through the existing profile by approximation.
+
+## License
+
+AdmiTrace is licensed under the Apache License 2.0.
