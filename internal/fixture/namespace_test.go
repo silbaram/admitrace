@@ -205,12 +205,12 @@ func TestNamespaceProviderContextForKubernetesBranches(t *testing.T) {
 			wantNamespace: true,
 		},
 		{
-			name: "Namespace delete uses fixture rather than old object",
+			name: "Namespace delete uses request name fixture rather than old object",
 			request: normalize.RequestContext{
 				Operation: admissionv1.Delete,
 				Resource:  schema.GroupVersionResource{Version: "v1", Resource: "namespaces"},
 				Scope:     contract.RequestScopeCluster,
-				Namespace: "team-a",
+				Name:      "team-a",
 				OldObject: oldObject,
 			},
 			wantRequired:  true,
@@ -225,7 +225,7 @@ func TestNamespaceProviderContextForKubernetesBranches(t *testing.T) {
 				Resource:    schema.GroupVersionResource{Version: "v1", Resource: "namespaces"},
 				Subresource: "finalize",
 				Scope:       contract.RequestScopeCluster,
-				Namespace:   "team-a",
+				Name:        "team-a",
 				Object:      object,
 			},
 			wantRequired:  true,

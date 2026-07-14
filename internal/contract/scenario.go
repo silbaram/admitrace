@@ -38,6 +38,16 @@ const (
 	ConfigurationKindMutating ConfigurationKind = "MutatingWebhookConfiguration"
 )
 
+// IsValid reports whether kind belongs to the configuration kind vocabulary.
+func (kind ConfigurationKind) IsValid() bool {
+	switch kind {
+	case ConfigurationKindValidating, ConfigurationKindMutating:
+		return true
+	default:
+		return false
+	}
+}
+
 // WebhookConfiguration is a one-of wrapper for the supported Kubernetes configuration types.
 type WebhookConfiguration struct {
 	Validating *kube136.ValidatingWebhookConfiguration `json:"validatingWebhookConfiguration,omitempty"`
