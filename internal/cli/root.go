@@ -11,8 +11,12 @@ import (
 // Execute runs the root command with the provided arguments, streams, and
 // build metadata.
 func Execute(args []string, stdin io.Reader, stdout, stderr io.Writer, build BuildMetadata) ExitCode {
+	return executeWithDependencies(args, stdin, stdout, stderr, build, defaultCommandDependencies())
+}
+
+func executeWithDependencies(args []string, stdin io.Reader, stdout, stderr io.Writer, build BuildMetadata, dependencies commandDependencies) ExitCode {
 	exitCode := ExitSuccess
-	command := newRootCommand(stdin, stdout, stderr, build, &exitCode)
+	command := newRootCommand(stdin, stdout, stderr, build, &exitCode, dependencies)
 	command.SetArgs(args)
 	executed, err := command.ExecuteC()
 	if err == nil {
@@ -43,7 +47,7 @@ func writeCommandError(command *cobra.Command, stderr io.Writer, commandErr erro
 	return nil
 }
 
-func newRootCommand(stdin io.Reader, stdout, stderr io.Writer, build BuildMetadata, exitCode *ExitCode) *cobra.Command {
+func newRootCommand(stdin io.Reader, stdout, stderr io.Writer, build BuildMetadata, exitCode *ExitCode, dependencies commandDependencies) *cobra.Command {
 	var output string
 	command := &cobra.Command{
 		Use:           "admitrace",
@@ -72,7 +76,7 @@ func newRootCommand(stdin io.Reader, stdout, stderr io.Writer, build BuildMetada
 	command.SetErr(stderr)
 	command.PersistentFlags().StringVarP(&output, "output", "o", string(outputText), "output format: text or json")
 	command.AddCommand(
-		newExplainCommand(&output, exitCode),
+		newExplainCommand(&output, exitCode, dependencies),
 		newTestCommand(&output, exitCode),
 		newVersionCommand(&output, build),
 	)
