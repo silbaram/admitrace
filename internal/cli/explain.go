@@ -13,6 +13,7 @@ import (
 	"github.com/silbaram/admitrace/internal/hydration"
 	"github.com/silbaram/admitrace/internal/manifest"
 	"github.com/silbaram/admitrace/internal/render"
+	"github.com/silbaram/admitrace/internal/snapshot"
 	"github.com/spf13/cobra"
 	admissionv1 "k8s.io/api/admission/v1"
 )
@@ -80,7 +81,7 @@ func newExplainCommand(output *string, exitCode *ExitCode, dependencies commandD
 	flags.StringSliceVar(&options.groups, "group", nil, "explicit admission request group; repeat as needed")
 	flags.StringVar(&options.userUID, "user-uid", "", "explicit admission request user UID")
 	flags.StringArrayVar(&options.userExtra, "user-extra", nil, manifest.UserExtraHelp)
-	flags.StringVar(&options.snapshotOut, "snapshot-out", "", "empty directory for exact replay Scenario snapshots")
+	flags.StringVar(&options.snapshotOut, "snapshot-out", "", "empty directory for exact replay Scenario snapshots; "+snapshot.PolicyNotice)
 	return command
 }
 
@@ -133,9 +134,6 @@ func executeExplanation(ctx context.Context, stdin io.Reader, options explainOpt
 	if options.webhookConfig == "" && options.contextName == "" {
 		return explainExecution{}, newCommandError(ExitInvalidInput, true, &contract.InvalidInputError{Field: "webhook-config", Err: errors.New("resource mode requires --webhook-config or --context")})
 	}
-	if options.snapshotOut != "" {
-		return explainExecution{}, &contract.UnsupportedCapabilityError{Capability: "--snapshot-out", Err: errors.New("snapshot export is not yet available")}
-	}
 	if err := manifest.ValidateOperation(admissionv1.Operation(strings.ToUpper(options.operation))); err != nil {
 		return explainExecution{}, err
 	}
@@ -180,7 +178,35 @@ func executeExplanation(ctx context.Context, stdin io.Reader, options explainOpt
 	if err != nil {
 		return explainExecution{}, err
 	}
+	if options.snapshotOut != "" {
+		if dependencies.writeSnapshots == nil {
+			return explainExecution{}, &contract.InternalError{Operation: "write Scenario snapshots", Err: errors.New("snapshot writer is required")}
+		}
+		if err := dependencies.writeSnapshots(options.snapshotOut, resolved.BuiltScenarios); err != nil {
+			var snapshotError *snapshot.Error
+			if !errors.As(err, &snapshotError) {
+				return explainExecution{}, &contract.InternalError{Operation: "write Scenario snapshots", Err: err}
+			}
+			explanations = applySnapshotRefusal(explanations, snapshotError)
+		}
+	}
 	return explainExecution{resources: explanations}, nil
+}
+
+func applySnapshotRefusal(explanations []manifest.ManifestExplanation, snapshotError *snapshot.Error) []manifest.ManifestExplanation {
+	result := append([]manifest.ManifestExplanation(nil), explanations...)
+	for index := range result {
+		if snapshotError.Resource.Label != "" && snapshotError.Resource != result[index].Resource {
+			continue
+		}
+		diagnostic := snapshotError.Diagnostic()
+		if diagnostic.SourceLabel == "" {
+			diagnostic.SourceLabel = result[index].Resource.Label
+			diagnostic.DocumentIndex = result[index].Resource.DocumentIndex
+		}
+		result[index].Diagnostics = append(result[index].Diagnostics, diagnostic)
+	}
+	return result
 }
 
 func profileMismatchExplanations(
@@ -399,6 +425,15 @@ func executionExitCode(execution explainExecution) ExitCode {
 }
 
 func manifestExplanationExitCode(explanation manifest.ManifestExplanation) ExitCode {
+	for _, diagnostic := range explanation.Diagnostics {
+		switch diagnostic.Code {
+		case manifest.DiagnosticCodeIncomplete,
+			manifest.DiagnosticCodeProfileMismatch,
+			manifest.DiagnosticCodeIdentityContextMissing,
+			manifest.DiagnosticCodeSnapshotRefused:
+			return ExitIncompleteEvaluation
+		}
+	}
 	for _, status := range []manifest.ContextStatus{
 		explanation.ContextCompleteness.Configuration,
 		explanation.ContextCompleteness.Discovery,
