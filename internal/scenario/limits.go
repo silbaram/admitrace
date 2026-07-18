@@ -33,11 +33,23 @@ func checkDocumentLimits(data []byte) error {
 	return nil
 }
 
+// CheckDocumentLimits applies the encoded size and nesting limits shared by
+// Scenario and manifest input decoders.
+func CheckDocumentLimits(data []byte) error {
+	return checkDocumentLimits(data)
+}
+
 func checkDecodedDepth(document any) error {
 	if depth := valueDepth(reflect.ValueOf(document), 0); depth > MaximumDocumentDepth {
 		return resourceLimit(".", "document nesting depth", depth, MaximumDocumentDepth)
 	}
 	return nil
+}
+
+// CheckDecodedDepth applies the decoded container nesting limit shared by
+// Scenario and manifest input decoders.
+func CheckDecodedDepth(document any) error {
+	return checkDecodedDepth(document)
 }
 
 func lexicalDepth(data []byte) (int, error) {
