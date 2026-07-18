@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "admitrace.manifest-explanation/v1alpha1",
+  "resource": {
+    "kind": "file",
+    "label": "deployment.yaml",
+    "documentIndex": 2
+  },
+  "profileMatch": {
+    "status": "declared",
+    "profile": {
+      "id": "kubernetes-1.36.2-defaults",
+      "kubernetesVersion": "1.36.2",
+      "featureGatePolicy": "kubernetes-defaults"
+    }
+  },
+  "contextCompleteness": {
+    "configuration": {
+      "status": "provided",
+      "sourceLabel": "webhooks.yaml"
+    },
+    "discovery": {
+      "status": "provided",
+      "sourceLabel": "kubernetes-1.36.2-defaults"
+    },
+    "namespace": {
+      "status": "missing"
+    },
+    "identity": {
+      "status": "missing"
+    },
+    "equivalence": {
+      "status": "not-required"
+    },
+    "authorization": {
+      "status": "not-required"
+    }
+  },
+  "diagnostics": [
+    {
+      "code": "ADAPTER_INCOMPLETE",
+      "severity": "warning",
+      "message": "namespace and identity context are unavailable",
+      "sourceLabel": "deployment.yaml",
+      "documentIndex": 2
+    }
+  ],
+  "evaluations": [
+    {
+      "configuration": {
+        "kind": "file",
+        "label": "webhooks.yaml",
+        "documentIndex": 1
+      },
+      "result": {
+        "schemaVersion": "admitrace.result/v1alpha1",
+        "scenarioId": "deployment-2-validating-config",
+        "compatibilityProfile": {
+          "id": "kubernetes-1.36.2-defaults",
+          "kubernetesVersion": "1.36.2",
+          "featureGatePolicy": "kubernetes-defaults"
+        },
+        "evaluationPhase": "snapshot-routing",
+        "configurationKind": "ValidatingWebhookConfiguration",
+        "webhooks": [],
+        "diagnostics": []
+      }
+    }
+  ]
+}
