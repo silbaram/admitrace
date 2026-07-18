@@ -1,0 +1,20 @@
+schemaVersion: admitrace.manifest-explanation/v1alpha1
+resourceSource: "stdin" document 1 (stdin)
+profileMatch: mismatch
+compatibilityProfile: kubernetes-1.36.2-defaults
+kubernetesVersion: 1.36.2
+observedKubernetesVersion: 1.36.3
+contextCompleteness:
+  configuration: missing
+  discovery: unsupported
+  namespace: not-required
+  identity: not-required
+  equivalence: not-required
+  authorization: not-required
+adapterDiagnostics:
+  - code: PROFILE_MISMATCH
+    severity: warning
+    message: "connected Kubernetes version does not match exact 1.36.2"
+    source: "stdin" document 1
+configurationEvaluations: []
+note: called means routing selected the webhook; no HTTP request was sent and no webhook response or allow/deny was observed.

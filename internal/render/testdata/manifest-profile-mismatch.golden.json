@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "admitrace.manifest-explanation/v1alpha1",
+  "resource": {
+    "kind": "stdin",
+    "label": "stdin",
+    "documentIndex": 1
+  },
+  "profileMatch": {
+    "status": "mismatch",
+    "profile": {
+      "id": "kubernetes-1.36.2-defaults",
+      "kubernetesVersion": "1.36.2",
+      "featureGatePolicy": "kubernetes-defaults"
+    },
+    "observedKubernetesVersion": "1.36.3"
+  },
+  "contextCompleteness": {
+    "configuration": {
+      "status": "missing"
+    },
+    "discovery": {
+      "status": "unsupported"
+    },
+    "namespace": {
+      "status": "not-required"
+    },
+    "identity": {
+      "status": "not-required"
+    },
+    "equivalence": {
+      "status": "not-required"
+    },
+    "authorization": {
+      "status": "not-required"
+    }
+  },
+  "diagnostics": [
+    {
+      "code": "PROFILE_MISMATCH",
+      "severity": "warning",
+      "message": "connected Kubernetes version does not match exact 1.36.2",
+      "sourceLabel": "stdin",
+      "documentIndex": 1
+    }
+  ],
+  "evaluations": []
+}

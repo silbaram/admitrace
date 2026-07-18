@@ -1,0 +1,61 @@
+schemaVersion: admitrace.manifest-explanation/v1alpha1
+resourceSource: "20-pod.yaml" document 1 (directory-entry)
+profileMatch: verified
+compatibilityProfile: kubernetes-1.36.2-defaults
+kubernetesVersion: 1.36.2
+observedKubernetesVersion: 1.36.2
+contextCompleteness:
+  configuration: forbidden
+  discovery: hydrated (source "context:staging")
+  namespace: missing
+  identity: missing
+  equivalence: not-required
+  authorization: not-required
+adapterDiagnostics:
+  - code: ADAPTER_INCOMPLETE
+    severity: warning
+    message: "configuration LIST was forbidden; provide --webhook-config"
+    source: "20-pod.yaml" document 1
+  - code: IDENTITY_CONTEXT_MISSING
+    severity: warning
+    message: "explicit admission identity is required"
+    source: "20-pod.yaml" document 1
+configurationEvaluations:
+  - ordinal: 1
+    source: "context:staging/ValidatingWebhookConfiguration/partial" (cluster)
+    result:
+      schemaVersion: admitrace.result/v1alpha1
+      scenario: "manifest-r0001-c0001"
+      compatibilityProfile: kubernetes-1.36.2-defaults
+      kubernetesVersion: 1.36.2
+      featureGatePolicy: kubernetes-defaults
+      evaluationPhase: snapshot-routing
+      configurationKind: ValidatingWebhookConfiguration
+      webhooks:
+        - index: 0
+          name: "missing-namespace.example.com"
+          sourcePath: ".configuration.validatingWebhookConfiguration.webhooks[0]"
+          configurationKind: ValidatingWebhookConfiguration
+          determination: indeterminate
+          outcome: null
+          terminalReasons:
+            - NAMESPACE_CONTEXT_MISSING
+          trace:
+            - sequence: 0
+              stage: "namespaceSelector"
+              sourcePath: ".configuration.validatingWebhookConfiguration.webhooks[0].namespaceSelector"
+              result: indeterminate
+              reasonCode: NAMESPACE_CONTEXT_MISSING
+              terminal: true
+              pending: false
+              discarded: false
+              inputSummary:
+                "namespace": "payments"
+          diagnostics:
+            - sourcePath: ".configuration.validatingWebhookConfiguration.webhooks[0].namespaceSelector"
+              code: NAMESPACE_CONTEXT_MISSING
+              severity: warning
+              message: "required fixture context is missing"
+              missingContext: "namespace" ("payments")
+      diagnostics: null
+note: called means routing selected the webhook; no HTTP request was sent and no webhook response or allow/deny was observed.

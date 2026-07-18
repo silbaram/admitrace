@@ -1,9 +1,7 @@
 package cli
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -164,6 +162,9 @@ func executeExplanation(ctx context.Context, stdin io.Reader, options explainOpt
 	}
 	selected, err := connectHydration(ctx, options, dependencies)
 	if err != nil {
+		if mismatch, ok := profileMismatchExplanations(resources, configurations, identity, err); ok {
+			return explainExecution{resources: mismatch}, nil
+		}
 		return explainExecution{}, err
 	}
 	resolved, err := adapter.Resolve(ctx, resources, adapter.Options{
@@ -180,6 +181,51 @@ func executeExplanation(ctx context.Context, stdin io.Reader, options explainOpt
 		return explainExecution{}, err
 	}
 	return explainExecution{resources: explanations}, nil
+}
+
+func profileMismatchExplanations(
+	resources []manifest.Document,
+	configurations []manifest.ConfigurationInput,
+	identity manifest.Identity,
+	err error,
+) ([]manifest.ManifestExplanation, bool) {
+	var hydrationError *hydration.Error
+	if !errors.As(err, &hydrationError) || hydrationError.Kind != hydration.ErrorKindProfileMismatch || hydrationError.ProfileMatch == nil {
+		return nil, false
+	}
+	configurationStatus := manifest.ContextStatus{Status: manifest.CompletenessMissing}
+	if len(configurations) > 0 {
+		configurationStatus = manifest.ContextStatus{Status: manifest.CompletenessProvided, SourceLabel: configurations[0].Source.Label}
+	}
+	identityStatus := manifest.ContextStatus{Status: manifest.CompletenessNotRequired}
+	if identity.Provided() {
+		identityStatus = manifest.ContextStatus{Status: manifest.CompletenessProvided, SourceLabel: "explicit-admission-user"}
+	}
+	result := make([]manifest.ManifestExplanation, len(resources))
+	for index, resource := range resources {
+		result[index] = manifest.ManifestExplanation{
+			SchemaVersion: manifest.ExplanationSchemaVersion,
+			Resource:      resource.Source,
+			ProfileMatch:  *hydrationError.ProfileMatch,
+			ContextCompleteness: manifest.ContextCompleteness{
+				Configuration: configurationStatus,
+				Discovery:     manifest.ContextStatus{Status: manifest.CompletenessUnsupported},
+				Namespace:     manifest.ContextStatus{Status: manifest.CompletenessNotRequired},
+				Identity:      identityStatus,
+				Equivalence:   manifest.ContextStatus{Status: manifest.CompletenessNotRequired},
+				Authorization: manifest.ContextStatus{Status: manifest.CompletenessNotRequired},
+			},
+			Diagnostics: []manifest.Diagnostic{{
+				Code:          manifest.DiagnosticCodeProfileMismatch,
+				Severity:      contract.DiagnosticSeverityWarning,
+				Message:       "connected Kubernetes version does not match the exact supported 1.36.2 profile",
+				SourceLabel:   resource.Source.Label,
+				DocumentIndex: resource.Source.DocumentIndex,
+			}},
+			Evaluations: []manifest.ConfigurationEvaluation{},
+		}
+	}
+	return result, true
 }
 
 func decodeCommandInput(stdin io.Reader, inputName string) (*manifest.DecodedInput, error) {
@@ -320,24 +366,14 @@ func renderExplainExecution(execution explainExecution, format outputFormat) ([]
 	if execution.legacy != nil {
 		return renderExplanation(*execution.legacy, format)
 	}
-	if format == outputJSON {
-		if len(execution.resources) == 1 {
-			encoded, err := json.MarshalIndent(execution.resources[0], "", "  ")
-			return append(encoded, '\n'), err
-		}
-		encoded, err := json.MarshalIndent(execution.resources, "", "  ")
-		return append(encoded, '\n'), err
+	switch format {
+	case outputText:
+		return render.ManifestText(execution.resources)
+	case outputJSON:
+		return render.ManifestJSON(execution.resources)
+	default:
+		return nil, fmt.Errorf("unsupported output format %q", format)
 	}
-	var output bytes.Buffer
-	for index, explanation := range execution.resources {
-		if index > 0 {
-			output.WriteByte('\n')
-		}
-		fmt.Fprintf(&output, "resource: %s document %d\n", explanation.Resource.Label, explanation.Resource.DocumentIndex)
-		fmt.Fprintf(&output, "profileMatch: %s\n", explanation.ProfileMatch.Status)
-		fmt.Fprintf(&output, "evaluations: %d\n", len(explanation.Evaluations))
-	}
-	return output.Bytes(), nil
 }
 
 func renderExplanation(result contract.EvaluationResult, format outputFormat) ([]byte, error) {
