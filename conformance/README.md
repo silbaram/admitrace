@@ -17,6 +17,19 @@ containing executable `kube-apiserver` and `etcd` binaries. The harness executes
 `kube-apiserver --version` before startup and rejects every version other than
 exactly `v1.36.2` as an oracle setup failure.
 
+The built-in CREATE resource catalog is generated only from this clean pinned
+API server's discovery and is committed for offline runtime lookup. Regenerate
+or verify it from the repository root with:
+
+```sh
+KUBEBUILDER_ASSETS=/absolute/path/to/kubernetes-1.36.2 ./hack/generate-resource-catalog.sh
+KUBEBUILDER_ASSETS=/absolute/path/to/kubernetes-1.36.2 ./hack/verify-resource-catalog.sh
+```
+
+Verification performs a semantic full comparison before requiring byte-stable
+canonical JSON. Subresources and API groups introduced after the clean-server
+built-in baseline are not eligible for the embedded catalog.
+
 After dependencies and the exact assets have been provisioned explicitly, run:
 
 ```sh

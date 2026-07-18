@@ -9,6 +9,8 @@ import (
 )
 
 const (
+	// ProfileID is the stable identity of the Kubernetes 1.36.2 default profile.
+	ProfileID = "kubernetes-1.36.2-defaults"
 	// KubernetesVersion identifies the supported Kubernetes release.
 	KubernetesVersion = "1.36.2"
 	// ModuleVersion identifies the aligned Kubernetes module release.

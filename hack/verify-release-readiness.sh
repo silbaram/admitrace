@@ -154,6 +154,7 @@ done
 ./hack/verify-dependencies.sh
 ./hack/verify-runtime-boundary.sh
 ./hack/verify-conformance-boundary.sh
+./hack/verify-resource-catalog.sh
 ./hack/test-redaction-offline-determinism.sh
 ./hack/test-resource-limits-fuzz.sh
 

@@ -10,7 +10,7 @@ const (
 	// ResultSchemaVersion is the canonical result contract version.
 	ResultSchemaVersion = "admitrace.result/v1alpha1"
 	// Kubernetes136DefaultProfileID is the stable identity of the built-in Kubernetes profile.
-	Kubernetes136DefaultProfileID = "kubernetes-1.36.2-defaults"
+	Kubernetes136DefaultProfileID = kube136.ProfileID
 )
 
 // FeatureGatePolicy identifies how Kubernetes feature gates are selected.
