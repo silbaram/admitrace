@@ -195,6 +195,9 @@ func (reader *Reader) ListValidatingConfigurations(ctx context.Context) Validati
 	sort.SliceStable(configurations, func(i, j int) bool { return configurations[i].Name < configurations[j].Name })
 	for index := range configurations {
 		configurations[index] = *configurations[index].DeepCopy()
+		if err := normalizeConfigurationTypeMeta(&configurations[index].TypeMeta, "ValidatingWebhookConfiguration"); err != nil {
+			return ValidatingConfigurationsResult{Status: ReadStatusMalformed, Err: err}
+		}
 	}
 	return ValidatingConfigurationsResult{Status: ReadStatusSuccess, Configurations: configurations}
 }
@@ -219,8 +222,24 @@ func (reader *Reader) ListMutatingConfigurations(ctx context.Context) MutatingCo
 	sort.SliceStable(configurations, func(i, j int) bool { return configurations[i].Name < configurations[j].Name })
 	for index := range configurations {
 		configurations[index] = *configurations[index].DeepCopy()
+		if err := normalizeConfigurationTypeMeta(&configurations[index].TypeMeta, "MutatingWebhookConfiguration"); err != nil {
+			return MutatingConfigurationsResult{Status: ReadStatusMalformed, Err: err}
+		}
 	}
 	return MutatingConfigurationsResult{Status: ReadStatusSuccess, Configurations: configurations}
+}
+
+func normalizeConfigurationTypeMeta(typeMeta *metav1.TypeMeta, kind string) error {
+	const apiVersion = "admissionregistration.k8s.io/v1"
+	if typeMeta.APIVersion == "" && typeMeta.Kind == "" {
+		typeMeta.APIVersion = apiVersion
+		typeMeta.Kind = kind
+		return nil
+	}
+	if typeMeta.APIVersion != apiVersion || typeMeta.Kind != kind {
+		return fmt.Errorf("webhook configuration response type got %s %s, want %s %s", typeMeta.APIVersion, typeMeta.Kind, apiVersion, kind)
+	}
+	return nil
 }
 
 func classifyReadError(err error) ReadStatus {

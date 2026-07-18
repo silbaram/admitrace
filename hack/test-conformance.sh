@@ -33,7 +33,13 @@ for test_name in \
 	TestSmokeObservations/rejected \
 	TestEquivalentAfterExactMiss \
 	TestEquivalentAfterExactMiss/exact \
-	TestEquivalentAfterExactMiss/equivalent
+	TestEquivalentAfterExactMiss/equivalent \
+	TestManifestAdapterHydrationAndSnapshot \
+	TestManifestAdapterHydrationAndSnapshot/catalog_and_CRD_discovery \
+	TestManifestAdapterHydrationAndSnapshot/real_API_permission_denial \
+	TestManifestAdapterHydrationAndSnapshot/Namespace_and_configuration_hydration \
+	TestManifestAdapterHydrationAndSnapshot/offline_CRD_remains_unsupported \
+	TestManifestAdapterHydrationAndSnapshot/snapshot_offline_replay
 do
 	if grep -F -q "=== RUN   $test_name" "$output_file"; then
 		continue

@@ -139,9 +139,17 @@ func TestVerifiedReaderUsesOnlyApprovedGETEndpoints(t *testing.T) {
 	if validating.Status != ReadStatusSuccess || len(validating.Configurations) != 2 || validating.Configurations[0].Name != "alpha" || validating.Configurations[1].Name != "zeta" {
 		t.Fatalf("ListValidatingConfigurations() = %#v, want deterministic success", validating)
 	}
+	for _, configuration := range validating.Configurations {
+		if configuration.APIVersion != "admissionregistration.k8s.io/v1" || configuration.Kind != "ValidatingWebhookConfiguration" {
+			t.Errorf("validating configuration TypeMeta = %s %s, want admissionregistration.k8s.io/v1 ValidatingWebhookConfiguration", configuration.APIVersion, configuration.Kind)
+		}
+	}
 	mutating := reader.ListMutatingConfigurations(context.Background())
 	if mutating.Status != ReadStatusSuccess || len(mutating.Configurations) != 1 || mutating.Configurations[0].Name != "mutator" {
 		t.Fatalf("ListMutatingConfigurations() = %#v, want deterministic success", mutating)
+	}
+	if configuration := mutating.Configurations[0]; configuration.APIVersion != "admissionregistration.k8s.io/v1" || configuration.Kind != "MutatingWebhookConfiguration" {
+		t.Errorf("mutating configuration TypeMeta = %s %s, want admissionregistration.k8s.io/v1 MutatingWebhookConfiguration", configuration.APIVersion, configuration.Kind)
 	}
 	want := []string{
 		"/api/v1/namespaces/team-a",
@@ -268,6 +276,12 @@ func TestResourceReadersReturnStableCompletenessStatuses(t *testing.T) {
 	}
 	if result := (&Reader{mutatingConfigs: mutatingStub{err: apierrors.NewForbidden(schema.GroupResource{Resource: "mutatingwebhookconfigurations"}, "", errors.New("denied"))}}).ListMutatingConfigurations(context.Background()); result.Status != ReadStatusForbidden {
 		t.Errorf("forbidden mutating LIST status = %q, want forbidden", result.Status)
+	}
+	invalidTypeMeta := &admissionregistrationv1.ValidatingWebhookConfigurationList{Items: []admissionregistrationv1.ValidatingWebhookConfiguration{{
+		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "ConfigMap"},
+	}}}
+	if result := (&Reader{validatingConfigs: validatingStub{list: invalidTypeMeta}}).ListValidatingConfigurations(context.Background()); result.Status != ReadStatusMalformed {
+		t.Errorf("conflicting validating TypeMeta status = %q, want malformed", result.Status)
 	}
 }
 
