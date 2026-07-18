@@ -2,7 +2,7 @@
 
 English | [한국어](README.ko.md)
 
-AdmiTrace reproduces Kubernetes Admission Webhook routing decisions offline and explains them as an ordered trace.
+AdmiTrace reproduces Kubernetes Admission Webhook routing decisions and explains them as an ordered trace. It accepts replayable Scenarios or ordinary Kubernetes resource YAML; resource mode is offline by default with explicit, GET-only context hydration available when needed.
 
 It evaluates `ValidatingWebhookConfiguration` and `MutatingWebhookConfiguration` objects against the same request snapshot. The first compatibility profile targets the default behavior of Kubernetes `1.36.2`.
 
@@ -28,20 +28,26 @@ Release source: [`v0.1.0`](https://github.com/silbaram/admitrace/tree/v0.1.0)
 
 ## Documentation
 
-- [Quickstart](docs/quickstart.md): build the CLI, run the validating and mutating examples, and add expectation checks to CI.
-- [Scenario and result reference](docs/reference.md): schemas, reason codes, exit codes, support policy, and explicit non-goals.
+- [Quickstart](docs/quickstart.md): run single/multi-document resources offline, opt into limited hydration, export snapshots, and preserve Scenario CI checks.
+- [Scenario, manifest adapter, and result reference](docs/reference.md): schemas, provenance, GET-only hydration, SnapshotPolicy, reason codes, exit codes, and explicit non-goals.
 - [Public beta validation](validation/beta/README.md): pinned Gatekeeper and Istio cases with license provenance, CLI results, and Kubernetes `1.36.2` oracle evidence.
 - [v0.1 release readiness](docs/release-readiness.md): one fail-closed command for pins, unit and fuzz tests, standalone smoke, parity, conformance, beta evidence, and documentation checks.
 
 ## Project status
 
-The repository implements the offline decision core, canonical text and JSON rendering, the `version`, `explain`, and `test` commands, safety guardrails, and a Kubernetes `1.36.2` envtest parity gate.
+The repository implements the offline decision core, a universal manifest adapter, a generated Kubernetes `1.36.2` built-in resource catalog, opt-in GET-only hydration, exact-copy Scenario snapshots, canonical text/JSON rendering, and a pinned envtest parity gate.
 
-AdmiTrace is not a live-cluster operations tool. The current release scope prioritizes semantic accuracy, explainability, and reproducible parity over transport or adapter integrations.
+AdmiTrace is not a live-cluster operations tool. Hydration reads only the narrow context needed for one explicit explanation; it does not audit or observe a cluster continuously.
 
 ## Core capabilities
 
 - Strict YAML/JSON Scenario decoding and input validation
+- Universal `-f/--file` detection for legacy Scenarios and raw Kubernetes resources
+- Deterministic single/multi-document, stdin, and resource-directory adaptation with 1-based provenance
+- Exact offline GVK→GVR/scope resolution from the generated `1.36.2` built-in catalog
+- Explicit-context hydration limited to version/discovery, WebhookConfiguration LIST, and needed Namespace GET requests
+- File-first configuration/Namespace fallbacks and explicit admission identity flags
+- Exact-copy-or-refuse Scenario snapshot export and offline replay
 - Common normalization for validating and mutating Webhooks
 - Namespace selector and object selector evaluation
 - Exact rule matching by operation, GVR, subresource, and scope
@@ -51,7 +57,7 @@ AdmiTrace is not a live-cluster operations tool. The current release scope prior
 - Fixture-backed Namespace, authorization, and equivalence context
 - Source-addressable traces with stable reason codes and pending, discarded, and terminal states
 - Ordered, independent evaluation of multiple Webhooks against one snapshot
-- Offline runtime without live Kubernetes clients or outbound network access
+- Zero client construction and network access unless `--context` is explicitly selected
 
 ## Decision model
 
@@ -80,11 +86,16 @@ Validating evaluations use the `snapshot-routing` phase. Mutating evaluations us
 - Kubernetes profile: `kubernetes-1.36.2-defaults`
 - Kubernetes modules: `v0.36.2`
 - Configuration API: `admissionregistration.k8s.io/v1`
+- Raw-resource operation: `CREATE` only
+- Resource explanation schema: `admitrace.manifest-explanation/v1alpha1`
+- Hydration boundary: explicit context, exact server `v1.36.2`, HTTP GET only
 - Webhook kinds:
   - `ValidatingWebhookConfiguration`
   - `MutatingWebhookConfiguration`
 
-`matchPolicy=Exact` is evaluated directly within the supported profile. `Equivalent` continues only after an Exact miss and only when an explicit equivalence fixture is available. Namespace and authorization context are also supplied exclusively through fixtures; no live cluster lookup is performed.
+`-f/--file` is universal: one `admitrace.io/v1alpha1` Scenario keeps legacy output; other file/stdin/directory inputs use resource mode. Offline resources must exist in the generated built-in catalog. CRDs require verified discovery from an explicit exact-version context and are never pluralized heuristically.
+
+Hydration never infers a context from current kubeconfig state. It permits only GET requests for version, discovery, WebhookConfiguration LIST, and a needed Namespace. Explicit `--webhook-config` and `--namespace-object` files suppress the corresponding cluster reads. Kubeconfig identity is not admission identity; only `--user`, `--group`, `--user-uid`, and `--user-extra` populate `request.userInfo`.
 
 ## Out of scope
 
@@ -94,10 +105,11 @@ AdmiTrace does not currently perform the following operations:
 - Validating Webhook response allow/deny decisions, status, or audit annotations
 - Applying JSON Patch output or predicting a mutating patch chain
 - Simulating `reinvocationPolicy`
-- Querying live Namespace, authorization, or API discovery state
+- Implicit current-context access, cluster-wide audit, watch/informer use, or API mutation
+- SubjectAccessReview or other POST-based permission preflight
 - Negotiating `AdmissionReviewVersions` or guaranteeing transport success
 - Simulating kube-apiserver dry-run pre-call rejection; unsupported `dryRun` and `sideEffects` combinations remain `unsupported`
-- Capturing a live request snapshot from a cluster
+- Capturing AdmissionRequest history or kubeconfig credentials as request identity
 - Testing timeouts, certificates, network failures, performance, or load
 - Approximating behavior for unverified Kubernetes versions
 - Providing a stable public Go API, JUnit XML, or project-specific adapters
@@ -121,6 +133,9 @@ mkdir -p ./build
 go build -o ./build/admitrace ./cmd/admitrace
 ./build/admitrace --help
 ./build/admitrace explain --file docs/examples/validating.yaml
+./build/admitrace explain --resource docs/manifest-examples/resource.yaml \
+  --webhook-config docs/manifest-examples/webhooks.yaml \
+  --namespace-object docs/manifest-examples/namespace.yaml
 ./build/admitrace --output json test docs/examples
 ```
 
@@ -157,6 +172,11 @@ internal/scenario         Scenario decoding, defaults, and validation
 internal/normalize        Webhook and request normalization
 internal/fixture          Namespace, equivalence, and authorization fixtures
 internal/compat/kube136   Kubernetes 1.36 compatibility adapters
+internal/resourcecatalog  Generated built-in discovery catalog contract
+internal/manifest         Raw manifest decoding, identity, and Scenario builder
+internal/adapter          File-first context completeness and hydration resolver
+internal/hydration        Explicit exact-version GET-only Kubernetes reader
+internal/snapshot         Exact-copy-or-refuse Scenario bundle writer
 internal/routing          Selectors, rules, and pre-CEL orchestration
 internal/matchcondition   CEL matchConditions evaluation
 internal/evaluation       Integrated snapshot evaluator

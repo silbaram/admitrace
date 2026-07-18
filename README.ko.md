@@ -2,7 +2,7 @@
 
 [English](README.md) | 한국어
 
-AdmiTrace는 Kubernetes Admission Webhook의 호출 대상 판정을 오프라인에서 재현하고, 그 이유를 순서가 보존된 trace로 설명하는 도구입니다.
+AdmiTrace는 Kubernetes Admission Webhook의 호출 대상 판정을 재현하고 그 이유를 순서가 보존된 trace로 설명합니다. 재생 가능한 Scenario와 일반 Kubernetes resource YAML을 모두 받으며, resource mode는 기본 오프라인이고 필요할 때만 명시적 GET-only context hydration을 사용합니다.
 
 `ValidatingWebhookConfiguration`과 `MutatingWebhookConfiguration`을 동일한 request snapshot으로 평가하며, Kubernetes `1.36.2` 기본 동작을 최초 compatibility profile로 사용합니다.
 
@@ -28,20 +28,26 @@ admitrace --help
 
 ## 문서
 
-- [빠른 시작](docs/quickstart.ko.md): CLI 빌드, Validating·Mutating 예제 실행과 CI expectation 검사
-- [Scenario·결과 레퍼런스](docs/reference.ko.md): schema, reason code, 종료 코드, 지원 정책과 명시적 비범위
+- [빠른 시작](docs/quickstart.ko.md): single/multi-document resource 오프라인 실행, 제한적 hydration, snapshot export, 기존 Scenario CI 검사
+- [Scenario·manifest adapter·결과 레퍼런스](docs/reference.ko.md): schema, provenance, GET-only hydration, SnapshotPolicy, reason code, 종료 코드와 명시적 비범위
 - [공개 beta 검증](validation/beta/README.ko.md): Gatekeeper·Istio 고정 사례의 라이선스 출처, CLI 결과와 Kubernetes `1.36.2` oracle 근거
 - [v0.1 릴리스 준비 검증](docs/release-readiness.ko.md): pin, unit·fuzz test, standalone smoke, parity, conformance, beta 근거와 문서 완료를 한 번에 검사하는 fail-closed 명령
 
 ## 현재 상태
 
-현재 저장소에는 오프라인 판정 코어, canonical text·JSON renderer, `version`, `explain`, `test` 명령, 안전 guardrail과 Kubernetes `1.36.2` envtest parity gate가 구현되어 있습니다.
+현재 저장소에는 오프라인 판정 코어, universal manifest adapter, 생성된 Kubernetes `1.36.2` built-in catalog, opt-in GET-only hydration, exact-copy Scenario snapshot, canonical text·JSON renderer와 pinned envtest parity gate가 구현되어 있습니다.
 
-AdmiTrace는 라이브 클러스터 운영 도구가 아닙니다. 현재 릴리스 범위는 transport나 adapter 통합보다 의미론적 정확성, 설명 가능성과 재현 가능한 parity를 우선합니다.
+AdmiTrace는 라이브 클러스터 운영 도구가 아닙니다. Hydration은 사용자가 명시한 한 번의 설명에 필요한 좁은 문맥만 읽으며 cluster를 계속 audit·observe하지 않습니다.
 
 ## 핵심 기능
 
 - YAML/JSON Scenario strict decoding과 입력 검증
+- 기존 Scenario와 raw Kubernetes resource를 구분하는 universal `-f/--file`
+- 1-based provenance를 보존하는 single/multi-document, stdin, resource-directory 처리
+- 생성된 `1.36.2` built-in catalog 기반 exact GVK→GVR/scope 해석
+- version/discovery, WebhookConfiguration LIST, 필요한 Namespace GET만 허용하는 explicit-context hydration
+- Configuration·Namespace file-first fallback과 명시적 admission identity flag
+- Exact-copy-or-refuse Scenario snapshot export와 오프라인 재생
 - Validating·Mutating Webhook의 공통 정규화
 - Namespace selector와 object selector 평가
 - operation, GVR, subresource, scope 기반 Exact rule matching
@@ -51,7 +57,7 @@ AdmiTrace는 라이브 클러스터 운영 도구가 아닙니다. 현재 릴리
 - Namespace, authorization, equivalence 외부 문맥의 fixture 재생
 - 단계별 source path, reason code, pending·discarded·terminal 상태 trace
 - 같은 snapshot에 대한 다중 Webhook 독립 평가와 입력 순서 보존
-- live Kubernetes client와 outbound network가 없는 offline runtime
+- `--context`를 명시하지 않으면 client 생성과 network access 0건
 
 ## 판정 모델
 
@@ -80,11 +86,16 @@ Validating 평가는 `snapshot-routing`, Mutating 평가는 `mutating-initial-sn
 - Kubernetes profile: `kubernetes-1.36.2-defaults`
 - Kubernetes modules: `v0.36.2`
 - Configuration API: `admissionregistration.k8s.io/v1`
+- Raw resource operation: `CREATE`만 지원
+- Resource explanation schema: `admitrace.manifest-explanation/v1alpha1`
+- Hydration boundary: explicit context, 정확한 server `v1.36.2`, HTTP GET only
 - Webhook kinds:
   - `ValidatingWebhookConfiguration`
   - `MutatingWebhookConfiguration`
 
-`matchPolicy=Exact`는 profile 범위에서 직접 평가합니다. `Equivalent`는 Exact miss 이후 명시적으로 제공된 equivalence fixture가 있을 때만 판정을 계속합니다. Namespace와 authorization도 라이브 클러스터 조회 없이 fixture만 사용합니다.
+`-f/--file`은 universal input입니다. 단일 `admitrace.io/v1alpha1` Scenario는 기존 출력을 유지하고, 그 밖의 file/stdin/directory는 resource mode를 사용합니다. 오프라인 resource는 생성된 built-in catalog에 있어야 하며 CRD는 exact-version context의 verified discovery가 필요합니다. Plural·scope는 추측하지 않습니다.
+
+Hydration은 kubeconfig current context를 암묵적으로 선택하지 않습니다. Version, discovery, WebhookConfiguration LIST, 필요한 Namespace에 대한 GET만 허용합니다. `--webhook-config`·`--namespace-object` 파일이 있으면 해당 cluster read를 생략합니다. Kubeconfig identity는 admission identity가 아니며 `--user`, `--group`, `--user-uid`, `--user-extra`만 `request.userInfo`를 구성합니다.
 
 ## 비범위
 
@@ -94,10 +105,11 @@ Validating 평가는 `snapshot-routing`, Mutating 평가는 `mutating-initial-sn
 - Webhook 응답의 allow/deny, status 또는 audit annotation 검증
 - JSON Patch 적용과 Mutating Webhook patch chain 예측
 - `reinvocationPolicy` 시뮬레이션
-- 라이브 Namespace, authorization 또는 API discovery 조회
+- 암묵적 current-context 접근, cluster-wide audit, watch/informer 또는 API 변경
+- SubjectAccessReview 등 POST 기반 permission preflight
 - `AdmissionReviewVersions` 협상과 transport 성공 보장
 - kube-apiserver의 dry-run 호출 전 거부 시뮬레이션. 지원하지 않는 `dryRun`·`sideEffects` 조합은 `unsupported`로 남음
-- 클러스터에서 라이브 request snapshot 캡처
+- AdmissionRequest history 또는 kubeconfig credential을 request identity로 capture
 - timeout, 인증서, 네트워크 장애 또는 부하 테스트
 - 지원이 검증되지 않은 Kubernetes 버전의 근사 판정
 - 안정적인 public Go API, JUnit XML 또는 프로젝트 전용 adapter 제공
@@ -121,6 +133,9 @@ mkdir -p ./build
 go build -o ./build/admitrace ./cmd/admitrace
 ./build/admitrace --help
 ./build/admitrace explain --file docs/examples/validating.yaml
+./build/admitrace explain --resource docs/manifest-examples/resource.yaml \
+  --webhook-config docs/manifest-examples/webhooks.yaml \
+  --namespace-object docs/manifest-examples/namespace.yaml
 ./build/admitrace --output json test docs/examples
 ```
 
@@ -157,6 +172,11 @@ internal/scenario         Scenario decode, defaults, validation
 internal/normalize        Webhook and request normalization
 internal/fixture          Namespace, equivalence, authorization fixtures
 internal/compat/kube136   Kubernetes 1.36 compatibility adapters
+internal/resourcecatalog  generated built-in discovery catalog contract
+internal/manifest         raw manifest decode, identity, Scenario builder
+internal/adapter          file-first context completeness와 hydration resolver
+internal/hydration        explicit exact-version GET-only Kubernetes reader
+internal/snapshot         exact-copy-or-refuse Scenario bundle writer
 internal/routing          Selectors, rules, pre-CEL orchestration
 internal/matchcondition   CEL matchConditions evaluation
 internal/evaluation       Integrated snapshot evaluator

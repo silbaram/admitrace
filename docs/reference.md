@@ -69,7 +69,7 @@ Every Webhook is evaluated independently against this same immutable snapshot an
 
 ### External context fixtures
 
-AdmiTrace does not query a live cluster. Supply context under `externalContext` when routing needs it:
+A legacy Scenario is always offline. Supply context under `externalContext` when routing needs it:
 
 - `namespace`: the exact Namespace object used by a non-empty namespace selector for a namespaced request.
 - `authorization`: exact resource or non-resource authorizer queries with `allow`, `deny`, `no-opinion`, or `error` verdicts.
@@ -98,9 +98,68 @@ expectations:
     terminalReasonCode: NAMESPACE_CONTEXT_MISSING
 ```
 
+## Manifest adapter and limited hydration
+
+`admitrace explain` also accepts ordinary Kubernetes YAML/JSON. `-f/--file` is the universal input flag:
+
+- one `admitrace.io/v1alpha1` `Scenario` document selects the unchanged legacy path and `admitrace.result/v1alpha1` output;
+- any other file or stdin document selects resource mode;
+- multi-document streams and directories are resource-only and reject any mixed Scenario document;
+- `--resource` explicitly selects resource mode and cannot be combined with `--file`.
+
+Resource and WebhookConfiguration documents preserve their logical filename/source kind and 1-based document index. Directory entries are processed in lexical filename order, then document order. An invalid Nth document stops before evaluation and reports that source/index; no partial output claims full coverage.
+
+Resource mode supports `CREATE` only. The adapter derives request object/name/namespace from the supplied resource and resolves exact GVK→GVR/scope. Offline resolution uses the generated, committed Kubernetes `1.36.2` built-in catalog. It rejects unknown GVKs and CRDs with verified-discovery guidance instead of guessing a plural or scope.
+
+### Context source precedence and safety boundary
+
+Hydration occurs only when `--context <name>` is explicit. `--kubeconfig` is optional but is valid only with `--context`; the default/current context is never selected implicitly. The connection must report exactly `v1.36.2` with major/minor `1.36`. Other patches, minors, a missing `v`, and vendor/build suffixes stop before discovery or configuration collection with a profile-mismatch diagnostic.
+
+The protected client permits HTTP GET only:
+
+1. `GET /version`;
+2. Kubernetes API discovery GETs;
+3. ValidatingWebhookConfiguration and MutatingWebhookConfiguration LIST, which are HTTP GET requests;
+4. one Namespace GET per resource when a selected namespace selector requires it.
+
+POST, PUT, PATCH, DELETE, SubjectAccessReview, server-side dry-run, watch/informer, and kubectl subprocesses are outside the hydration boundary. A forbidden/unavailable read is represented in `contextCompleteness`; it never becomes a guessed match or skip.
+
+Explicit sources win before cluster reads:
+
+- `--webhook-config <file|directory>` suppresses both cluster configuration LISTs;
+- `--namespace-object <file>` suppresses Namespace GET;
+- verified discovery still runs when `--context` is needed to resolve a CRD.
+
+Kubeconfig user/certificate/token identifies the API connection only. It is never copied to `request.userInfo`. Admission identity is populated exclusively by `--user`, repeated `--group`, `--user-uid`, and repeated `--user-extra key=value`. If a reached condition requires missing identity, authorization, equivalence, or Namespace context, the result remains fail-closed.
+
+### Manifest explanation envelope
+
+Resource mode emits one `admitrace.manifest-explanation/v1alpha1` object for one resource or an ordered JSON array/text document sequence for multiple resources. Each object contains:
+
+- resource source and 1-based document provenance;
+- declared or verified profile status;
+- `configuration`, `discovery`, `namespace`, `identity`, `equivalence`, and `authorization` completeness;
+- source-indexed adapter diagnostics;
+- one ordered, unchanged `admitrace.result/v1alpha1` evaluation per configuration.
+
+Exit code `3` is used when any required completeness status is missing, forbidden, or unsupported, or an evaluator result is incomplete. `called` in nested results remains routing selection only.
+
+### SnapshotPolicy
+
+`--snapshot-out <directory>` writes canonical Scenario YAML named `rrrr-cccc.yaml`, one file for each ordered resource/configuration pair. The destination must be non-existent or empty; publication is staged and atomic. Directory and file permissions are `0700` and `0600`.
+
+The policy is exact-copy-or-refuse:
+
+- core/v1 `Secret` is always refused before any bundle is published;
+- explicit admission `UserInfo` and user-supplied general resource/CRD payloads are persisted unchanged for exact replay;
+- there is no field redaction and no promised generic secret detection inside arbitrary custom-resource fields;
+- kubeconfig bytes, bearer token, client certificate/key, API server URL, selected context/cluster identity, and automatically authenticated connection user are not captured.
+
+Review the input before snapshotting. A non-Secret resource can still contain sensitive user data because exact replay intentionally preserves it.
+
 ## Result schema
 
-`admitrace explain --output json` emits `admitrace.result/v1alpha1`:
+A legacy Scenario evaluated with `admitrace explain --output json` emits `admitrace.result/v1alpha1`. Resource mode nests the same unchanged result inside the manifest envelope described above:
 
 | Field | Meaning |
 | --- | --- |
@@ -158,6 +217,7 @@ Registered reason codes are:
 | `EVALUATION_PROBLEM_DISCARDED` | A pending selector problem became irrelevant |
 | `EVALUATION_PROBLEM_PENDING` | A selector problem is waiting for applicability |
 | `EQUIVALENCE_CONTEXT_MISSING` | Required equivalence mapping is absent |
+| `IDENTITY_CONTEXT_MISSING` | A reached match condition requires explicit admission identity |
 | `INTERNAL_ERROR` | An internal invariant or operation failed |
 | `INVALID_INPUT` | Input violates the public contract |
 | `KUBERNETES_EVALUATION_ERROR` | Kubernetes-compatible evaluation returned an error |
@@ -178,12 +238,13 @@ Diagnostics repeat a registered `code` with `severity`, display `message`, `sour
 ## CLI contract
 
 ```text
-admitrace [--output text|json] explain --file <path|->
+admitrace [--output text|json] explain --file <path|directory|-> [resource-mode flags]
+admitrace [--output text|json] explain --resource <path|directory|-> [resource-mode flags]
 admitrace [--output text|json] test <path>...
 admitrace [--output text|json] version
 ```
 
-`--output` defaults to `text`. `explain` reads one file or stdin. `test` reads explicit files regardless of extension; directories recursively include only regular `.yaml`, `.yml`, and `.json` files without following symlink directories. One invocation is limited to 1,000 discovered documents.
+`--output` defaults to `text`. Resource-mode flags include `--webhook-config`, `--namespace-object`, `--context`, `--kubeconfig`, explicit identity flags, `--operation CREATE`, and `--snapshot-out`. `test` remains Scenario-only: it reads explicit files regardless of extension; directories recursively include only regular `.yaml`, `.yml`, and `.json` files without following symlink directories. One invocation is limited to 1,000 discovered documents.
 
 JSON `test` output uses `admitrace.test/v1alpha1` and contains ordered `fixtures` plus a `summary` with `total`, `passed`, `mismatched`, `invalid`, `incomplete`, `internal`, and `exitCode`.
 
@@ -236,11 +297,14 @@ The current product does not:
 - evaluate Webhook response allow/deny, status, warnings, audit annotations, or patches;
 - negotiate transport, certificates, timeouts, or `AdmissionReviewVersions`;
 - simulate mutating response ordering, patch application, or `reinvocationPolicy`;
-- retrieve live Namespace, authorization, API discovery, CRD, or request snapshots;
+- select an implicit/current kubeconfig context, watch a cluster, or perform cluster-wide audit/history ingestion;
+- infer admission identity from kubeconfig or query live authorization with SubjectAccessReview;
+- use any Kubernetes API mutation, server-side dry-run, watch, or informer;
+- capture a live AdmissionRequest history stream;
 - provide a command that captures a live AdmissionRequest snapshot from a cluster;
 - emit JUnit XML;
 - provide a project-specific adapter or upstream integration;
 - promise a stable public Go API;
 - approximate an unverified Kubernetes version.
 
-The separate envtest suite uses a real local Kubernetes `1.36.2` API server only as a development oracle. It is not part of production runtime and does not change these non-goals.
+Explicit hydration is a bounded GET-only input adapter, not observability or request capture. The separate envtest suite uses a real local Kubernetes `1.36.2` API server as a development oracle and verifies that boundary; envtest is not a production dependency.

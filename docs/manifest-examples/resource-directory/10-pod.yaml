@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: checkout-directory
+  namespace: team-a
+spec:
+  containers:
+    - name: app
+      image: example.invalid/checkout:v1

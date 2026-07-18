@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: checkout
+  namespace: team-a
+spec:
+  containers:
+    - name: app
+      image: example.invalid/checkout:v1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: checkout-settings
+  namespace: team-a
+data:
+  mode: production

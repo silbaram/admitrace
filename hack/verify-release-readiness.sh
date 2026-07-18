@@ -13,7 +13,7 @@ fail() {
 require_text() {
 	text=$1
 	file=$2
-	if grep -F -q "$text" "$file"; then
+	if grep -F -q -- "$text" "$file"; then
 		return
 	else
 		status=$?
@@ -28,7 +28,7 @@ require_text() {
 require_line() {
 	line=$1
 	file=$2
-	if grep -F -x -q "$line" "$file"; then
+	if grep -F -x -q -- "$line" "$file"; then
 		return
 	else
 		status=$?
@@ -81,6 +81,13 @@ version_text=$temporary_dir/version.txt
 version_json=$temporary_dir/version.json
 explain_first=$temporary_dir/explain-first.json
 explain_second=$temporary_dir/explain-second.json
+explain_help=$temporary_dir/explain-help.txt
+manifest_single=$temporary_dir/manifest-single.json
+manifest_multi_first=$temporary_dir/manifest-multi-first.json
+manifest_multi_second=$temporary_dir/manifest-multi-second.json
+snapshot_explain=$temporary_dir/snapshot-explain.json
+snapshot_replay=$temporary_dir/snapshot-replay.json
+snapshot_dir=$temporary_dir/snapshots
 test_first=$temporary_dir/test-first.json
 test_second=$temporary_dir/test-second.json
 root_tests=$temporary_dir/root-tests.json
@@ -137,6 +144,11 @@ for test_name in \
 	TestGoldenResults \
 	TestExecuteExplainFileAndStdinAreEquivalent \
 	TestExecuteTestOutputFormatsAreDeterministic \
+	TestOfflineManifestExplanationIsCanonicalAndNetworkFree \
+	TestVerifiedHydrationHTTPAuditAllowsOnlyExactGETSurface \
+	TestOfflineSnapshotCLIReplayPreservesExactEvaluationAndPayload \
+	TestManifestExplainSecretSnapshotRefusalDoesNotSuppressExplanation \
+	TestUniversalExplainKeepsLegacyOutputAndSkipsHydrationFactory \
 	TestVersionProcessUsesBuildMetadata
 do
 	if grep -E -q '"Action":"run".*"Test":"'"$test_name"'"' "$root_tests"; then
@@ -169,11 +181,49 @@ require_text 'Go toolchain: go1.26.5' "$version_text"
 require_text 'dependency: github.com/spf13/cobra v1.10.2' "$version_text"
 require_text '"id": "kubernetes-1.36.2-defaults"' "$version_json"
 
+"$binary" explain --help >"$explain_help"
+require_text '-f/--file is universal' "$explain_help"
+require_text 'CREATE-only resource mode' "$explain_help"
+require_text 'GET-only hydration' "$explain_help"
+require_text 'called means routing selected the webhook' "$explain_help"
+
 "$binary" explain -f docs/examples/validating.yaml >/dev/null
 "$binary" explain -f docs/examples/mutating.yaml >/dev/null
 "$binary" --output json explain -f docs/examples/validating.yaml >"$explain_first"
 "$binary" --output json explain -f docs/examples/validating.yaml >"$explain_second"
 cmp "$explain_first" "$explain_second"
+
+"$binary" --output json explain \
+	--resource docs/manifest-examples/resource.yaml \
+	--webhook-config docs/manifest-examples/webhooks.yaml \
+	--namespace-object docs/manifest-examples/namespace.yaml >"$manifest_single"
+require_text '"schemaVersion": "admitrace.manifest-explanation/v1alpha1"' "$manifest_single"
+require_text '"documentIndex": 1' "$manifest_single"
+
+"$binary" --output json explain \
+	-f docs/manifest-examples/resources.yaml \
+	--webhook-config docs/manifest-examples/webhooks.yaml \
+	--namespace-object docs/manifest-examples/namespace.yaml >"$manifest_multi_first"
+"$binary" --output json explain \
+	-f docs/manifest-examples/resources.yaml \
+	--webhook-config docs/manifest-examples/webhooks.yaml \
+	--namespace-object docs/manifest-examples/namespace.yaml >"$manifest_multi_second"
+cmp "$manifest_multi_first" "$manifest_multi_second"
+require_text '"documentIndex": 2' "$manifest_multi_first"
+
+"$binary" explain \
+	-f docs/manifest-examples/resource-directory \
+	--webhook-config docs/manifest-examples/webhooks.yaml \
+	--namespace-object docs/manifest-examples/namespace.yaml >/dev/null
+
+"$binary" --output json explain \
+	--resource docs/manifest-examples/resource.yaml \
+	--webhook-config docs/manifest-examples/webhooks.yaml \
+	--namespace-object docs/manifest-examples/namespace.yaml \
+	--user alice \
+	--snapshot-out "$snapshot_dir" >"$snapshot_explain"
+"$binary" --output json explain -f "$snapshot_dir/0001-0001.yaml" >"$snapshot_replay"
+require_text '"schemaVersion": "admitrace.result/v1alpha1"' "$snapshot_replay"
 
 "$binary" test docs/examples >/dev/null
 "$binary" --output json test docs/examples >"$test_first"
@@ -190,11 +240,21 @@ PARITY_REPORT="$parity_report" ./hack/test-parity-gate.sh
 
 require_text '## Supported scope' README.md
 require_text '## Out of scope' README.md
+require_text 'manifest adapter' README.md
 require_text '## Mutating limitation' docs/reference.md
 require_text '## Explicit non-goals' docs/reference.md
+require_text '## Manifest adapter and limited hydration' docs/reference.md
+require_text '### SnapshotPolicy' docs/reference.md
+require_text '## Explain resources offline' docs/quickstart.md
+require_text '## Export and replay snapshots' docs/quickstart.md
 require_text '## 지원 범위' README.ko.md
 require_text '## 비범위' README.ko.md
+require_text 'manifest adapter' README.ko.md
 require_text '## Mutating 제한과 명시적 비범위' docs/reference.ko.md
+require_text '## Manifest adapter와 제한적 hydration' docs/reference.ko.md
+require_text '### SnapshotPolicy' docs/reference.ko.md
+require_text '## Resource를 완전 오프라인으로 설명' docs/quickstart.ko.md
+require_text '## Snapshot export와 재생' docs/quickstart.ko.md
 require_text 'gatekeeper-v3.22.2-validating.yaml' validation/beta/README.md
 require_text 'istio-1.30.0-mutating.yaml' validation/beta/README.md
 require_text 'docs/release-readiness.md' README.md

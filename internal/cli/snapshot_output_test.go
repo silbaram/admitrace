@@ -129,7 +129,20 @@ func TestExplainHelpStatesSnapshotPolicyLimit(t *testing.T) {
 	if code != ExitSuccess || stderr.String() != "" {
 		t.Fatalf("Execute(help) = code %d, stderr %q", code, stderr.String())
 	}
-	for _, want := range []string{"core/v1 Secret", "explicit UserInfo", "do not detect generic secrets in custom resources"} {
+	for _, want := range []string{
+		"--file is universal",
+		"1-based document index",
+		"CREATE-only resource mode",
+		"generated 1.36.2 built-in catalog",
+		"CRDs require verified context discovery",
+		"exact Kubernetes 1.36.2",
+		"permits GET only",
+		"never inferred from kubeconfig",
+		"core/v1 Secret",
+		"explicit UserInfo",
+		"do not detect generic secrets in custom resources",
+		"called means routing selected the webhook",
+	} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Errorf("help missing %q:\n%s", want, stdout.String())
 		}

@@ -44,7 +44,13 @@ func newExplainCommand(output *string, exitCode *ExitCode, dependencies commandD
 	command := &cobra.Command{
 		Use:   "explain",
 		Short: "Explain admission webhook routing decisions",
-		Args:  cobra.NoArgs,
+		Long: "Explain one legacy Scenario or raw Kubernetes resource manifests. " +
+			"-f/--file is universal: one admitrace.io/v1alpha1 Scenario keeps legacy output, while other files, stdin, and directories use CREATE-only resource mode. Input errors identify the logical source and 1-based document index. " +
+			"Offline resolution uses the generated 1.36.2 built-in catalog; CRDs require verified context discovery and are never guessed.\n\n" +
+			"Resource mode is offline unless --context is explicit. Context hydration requires exact Kubernetes 1.36.2 and permits GET only: version, discovery, WebhookConfiguration LIST, and a needed Namespace GET. " +
+			"Explicit --webhook-config and --namespace-object files take precedence over those cluster reads. Admission identity is never inferred from kubeconfig; use --user and related flags.\n\n" +
+			"called means routing selected the webhook; no HTTP request is sent and no webhook response or allow/deny result is observed.",
+		Args: cobra.NoArgs,
 		RunE: func(command *cobra.Command, _ []string) error {
 			options.resourceExplicit = command.Flags().Changed("resource")
 			if err := validateExplainFlags(command, options); err != nil {
@@ -70,14 +76,14 @@ func newExplainCommand(output *string, exitCode *ExitCode, dependencies commandD
 		},
 	}
 	flags := command.Flags()
-	flags.StringVarP(&options.file, "file", "f", "", "Scenario or resource file, directory, or - for stdin")
-	flags.StringVar(&options.resource, "resource", "", "explicit resource file, directory, or - for stdin")
-	flags.StringVar(&options.webhookConfig, "webhook-config", "", "WebhookConfiguration file or directory")
-	flags.StringVar(&options.namespaceObject, "namespace-object", "", "core/v1 Namespace file")
-	flags.StringVar(&options.contextName, "context", "", "explicit kubeconfig context for GET-only hydration")
+	flags.StringVarP(&options.file, "file", "f", "", "universal Scenario or resource file, resource directory, or - for stdin")
+	flags.StringVar(&options.resource, "resource", "", "explicit CREATE-only resource-mode file, directory, or - for stdin")
+	flags.StringVar(&options.webhookConfig, "webhook-config", "", "WebhookConfiguration file or directory; takes precedence over cluster LIST")
+	flags.StringVar(&options.namespaceObject, "namespace-object", "", "core/v1 Namespace file; takes precedence over Namespace GET")
+	flags.StringVar(&options.contextName, "context", "", "explicit kubeconfig context for exact 1.36.2 GET-only hydration")
 	flags.StringVar(&options.kubeconfig, "kubeconfig", "", "kubeconfig path used only with --context")
-	flags.StringVar(&options.operation, "operation", string(admissionv1.Create), "admission operation (resource mode supports CREATE only)")
-	flags.StringVar(&options.user, "user", "", "explicit admission request username")
+	flags.StringVar(&options.operation, "operation", string(admissionv1.Create), "admission operation; resource mode supports CREATE only")
+	flags.StringVar(&options.user, "user", "", "explicit admission request username; never inferred from kubeconfig")
 	flags.StringSliceVar(&options.groups, "group", nil, "explicit admission request group; repeat as needed")
 	flags.StringVar(&options.userUID, "user-uid", "", "explicit admission request user UID")
 	flags.StringArrayVar(&options.userExtra, "user-extra", nil, manifest.UserExtraHelp)

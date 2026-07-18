@@ -11,6 +11,11 @@ production_dirs=$(go list -buildvcs=false -deps -f \
 	./cmd/admitrace)
 production_files=$(
 	for directory in $production_dirs; do
+		# The manifest adapter's sole network-capable package is audited
+		# separately by hydration security tests and the GET-only transport.
+		if [ "$directory" = "$project_dir/internal/hydration" ]; then
+			continue
+		fi
 		find "$directory" -maxdepth 1 -type f -name '*.go' ! -name '*_test.go' -print
 	done
 )
@@ -26,7 +31,7 @@ source_status=$?
 set -e
 case $source_status in
 0)
-	printf '%s\n' 'production source contains a client, dial, listener, or envtest boundary violation:' >&2
+	printf '%s\n' 'production source outside internal/hydration contains a client, dial, listener, or envtest boundary violation:' >&2
 	printf '%s\n' "$forbidden_source" >&2
 	exit 1
 ;;
@@ -59,4 +64,9 @@ case $dependency_status in
 ;;
 esac
 
-printf '%s\n' 'verified offline production runtime boundary'
+if [ ! -f "$project_dir/internal/hydration/client.go" ] || [ ! -f "$project_dir/internal/hydration/reader.go" ]; then
+	printf '%s\n' 'protected hydration boundary is missing its client or reader implementation' >&2
+	exit 1
+fi
+
+printf '%s\n' 'verified production runtime boundary with isolated GET-only hydration'

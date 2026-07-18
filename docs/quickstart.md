@@ -2,7 +2,7 @@
 
 English | [한국어](quickstart.ko.md)
 
-AdmiTrace evaluates one supplied request snapshot against one validating or mutating Webhook configuration. It runs offline and does not need a cluster.
+AdmiTrace accepts both its replayable `Scenario` format and ordinary Kubernetes resources. Raw-resource mode evaluates `CREATE` routing and stays completely offline unless you explicitly select a kubeconfig context.
 
 ## Build
 
@@ -14,64 +14,112 @@ go build -o ./build/admitrace ./cmd/admitrace
 ./build/admitrace version
 ```
 
-The repository includes two executable Scenario examples:
+## Explain resources offline
 
-- [`examples/validating.yaml`](examples/validating.yaml): a validating Pod `CREATE` selected for invocation.
-- [`examples/mutating.yaml`](examples/mutating.yaml): a mutating ConfigMap `UPDATE` selected from the initial request snapshot.
+`-f/--file` is universal. A single `admitrace.io/v1alpha1` `Scenario` keeps the legacy result schema; every other file, stdin stream, or directory enters resource mode. `--resource` is an explicit resource-mode synonym.
 
-## Explain one Scenario
-
-Text is the default output and is intended for a person reading the ordered routing trace:
+Explain one resource with explicit WebhookConfiguration and Namespace files:
 
 ```sh
-./build/admitrace explain --file docs/examples/validating.yaml
+./build/admitrace explain \
+  --resource docs/manifest-examples/resource.yaml \
+  --webhook-config docs/manifest-examples/webhooks.yaml \
+  --namespace-object docs/manifest-examples/namespace.yaml
 ```
 
-Canonical JSON is intended for tools and preserves array order and absent-versus-empty distinctions:
+Explain a two-document resource stream against both configuration documents as canonical JSON:
 
 ```sh
-./build/admitrace --output json explain --file docs/examples/validating.yaml
+./build/admitrace --output json explain \
+  -f docs/manifest-examples/resources.yaml \
+  --webhook-config docs/manifest-examples/webhooks.yaml \
+  --namespace-object docs/manifest-examples/namespace.yaml
 ```
 
-Use `--file -` to read exactly one Scenario from standard input:
+The same resource stream can come from stdin, or from a directory whose YAML/JSON files are processed in lexical order:
 
 ```sh
-./build/admitrace explain --file - < docs/examples/validating.yaml
+./build/admitrace explain -f - \
+  --webhook-config docs/manifest-examples/webhooks.yaml \
+  --namespace-object docs/manifest-examples/namespace.yaml \
+  < docs/manifest-examples/resources.yaml
+
+./build/admitrace explain -f docs/manifest-examples/resource-directory \
+  --webhook-config docs/manifest-examples/webhooks.yaml \
+  --namespace-object docs/manifest-examples/namespace.yaml
 ```
 
-Normal results go to stdout. Usage, invalid-input, and internal diagnostics go to stderr. `explain` exits `0` for a fully determinate result and `3` if any Webhook is `indeterminate` or `unsupported`.
+The primary directory must contain resources only. Invalid documents are reported by logical filename and 1-based document index, and no partial output claims complete coverage.
 
-## Check expectations in CI
+Without `--context`, client construction and Kubernetes API traffic are both zero. Offline GVK resolution uses the generated Kubernetes `1.36.2` built-in catalog. An unknown GVK or CRD is `unsupported`; AdmiTrace never guesses its plural or scope.
 
-`test` accepts explicit files and directories. Directories are searched recursively for regular `.yaml`, `.yml`, and `.json` files; discovered clean paths are deduplicated and evaluated in lexical order.
+## Opt in to limited hydration
+
+Use an explicitly named context when a CRD needs discovery or when configuration/Namespace files are unavailable:
 
 ```sh
+./build/admitrace explain \
+  --resource docs/manifest-examples/resource.yaml \
+  --context production \
+  --kubeconfig /path/to/kubeconfig
+```
+
+Hydration first performs `GET /version` and continues only when the server is exactly `v1.36.2`—other patches, minors, and vendor suffixes are rejected. The remaining surface is GET-only: discovery, Validating/MutatingWebhookConfiguration LIST (HTTP GET), and a Namespace GET when a selected namespace selector needs it. AdmiTrace never issues SubjectAccessReview, dry-run, watch, or mutation requests.
+
+Explicit files take precedence and suppress the corresponding cluster reads. This is useful when discovery is needed for a CRD but configuration or Namespace LIST/GET permission is unavailable:
+
+```sh
+./build/admitrace explain \
+  --resource docs/manifest-examples/resource.yaml \
+  --context production \
+  --webhook-config docs/manifest-examples/webhooks.yaml \
+  --namespace-object docs/manifest-examples/namespace.yaml
+```
+
+Kubeconfig credentials identify only the Kubernetes API connection. They never become the admission request identity. Supply that identity explicitly when `matchConditions` use `request.userInfo`:
+
+```sh
+./build/admitrace explain \
+  --resource docs/manifest-examples/resource.yaml \
+  --webhook-config docs/manifest-examples/webhooks.yaml \
+  --namespace-object docs/manifest-examples/namespace.yaml \
+  --user alice --group developers --user-extra tenant=blue
+```
+
+Missing configuration, Namespace, identity, equivalence, or authorization context remains fail-closed as `indeterminate`/`unsupported` with exit code `3` and file-fallback guidance.
+
+## Export and replay snapshots
+
+`--snapshot-out` writes one canonical Scenario per resource/configuration pair to a non-existent or empty directory:
+
+```sh
+snapshot_dir=$(mktemp -d)
+./build/admitrace --output json explain \
+  --resource docs/manifest-examples/resource.yaml \
+  --webhook-config docs/manifest-examples/webhooks.yaml \
+  --namespace-object docs/manifest-examples/namespace.yaml \
+  --user alice \
+  --snapshot-out "$snapshot_dir"
+
+./build/admitrace explain -f "$snapshot_dir/0001-0001.yaml"
+```
+
+SnapshotPolicy is exact-copy-or-refuse. A core/v1 `Secret` is always refused. Explicit `UserInfo` and user-supplied general resources/CRDs are stored unchanged for exact replay; no field redaction or generic secret detection is promised for custom-resource fields. Kubeconfig bytes, credentials, API server URL, selected context, and automatic connection identity are not copied. Published directory/file modes are `0700`/`0600`.
+
+## Preserve legacy Scenario behavior
+
+The existing Scenario commands are unchanged:
+
+```sh
+./build/admitrace explain -f docs/examples/validating.yaml
+./build/admitrace --output json explain -f docs/examples/mutating.yaml
 ./build/admitrace test docs/examples
-./build/admitrace --output json test docs/examples
 ```
 
-Both included fixtures declare matching expectations, so these commands exit `0`. A determination, asserted outcome, or asserted terminal reason mismatch exits `1`. An exactly expected `indeterminate` or `unsupported` result exits `0`; an unasserted incomplete result exits `3`.
-
-A minimal CI flow is:
-
-```sh
-set -eu
-mkdir -p ./build
-go build -o ./build/admitrace ./cmd/admitrace
-./build/admitrace --output json test docs/examples
-```
-
-Only text and JSON reports are supported. AdmiTrace does not emit JUnit XML.
+`test` recursively discovers only Scenario fixtures and compares their expectations. It does not adapt raw resources.
 
 ## Read a result
 
-Each Webhook result contains:
+Resource mode wraps each input resource in `admitrace.manifest-explanation/v1alpha1`, including source/document provenance, exact profile status, context completeness, diagnostics, and one ordered legacy evaluator result per configuration. Text and JSON are deterministic.
 
-- `determination`: whether AdmiTrace could complete the supported evaluation.
-- optional `outcome`: `called`, `skipped`, or `rejected-before-call` for a determinate result.
-- `trace`: ordered steps with stable `reasonCode`, `pending`, `discarded`, and `terminal` state.
-- `diagnostics`: structured missing-context, unsupported-capability, or evaluation information.
-
-`called` means selected for invocation. No HTTP/TLS request is sent and no Webhook response is evaluated. Mutating results are initial-snapshot eligibility only; patches and reinvocation are not simulated.
-
-See the [Scenario and result reference](reference.md) for the complete contract, exit codes, reason codes, support policy, and non-goals.
+`called` means routing selected the Webhook. No AdmissionReview HTTP/TLS request is sent, and no response, allow/deny decision, patch, or reinvocation is observed. See the [Scenario and result reference](reference.md) for the full contract and exit codes.
