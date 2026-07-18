@@ -122,6 +122,49 @@ metadata: {name: immutable, namespace: team-a}
 	}
 }
 
+func TestBuildScenariosResolvesExternalContextOncePerResource(t *testing.T) {
+	t.Parallel()
+
+	resources := decodeResourceDocuments(t, `apiVersion: v1
+kind: Pod
+metadata: {name: first, namespace: team-a}
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: second, namespace: team-b}
+`)
+	configurations := decodeConfigurationDocuments(t, validatingConfiguration+"---\n"+mutatingConfiguration)
+	calls := 0
+	built, err := manifest.BuildScenarios(resources, configurations, manifest.OfflineResolver{}, manifest.BuildOptions{
+		ExternalContextFor: func(resource manifest.Document, _ manifest.DiscoveryResolution) (*contract.ExternalContext, error) {
+			calls++
+			return &contract.ExternalContext{Namespace: &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: resource.Object.GetNamespace()}}}, nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("BuildScenarios() error = %v", err)
+	}
+	if calls != 2 {
+		t.Errorf("ExternalContextFor calls = %d, want once per resource", calls)
+	}
+	if len(built) != 4 || built[0].Scenario.ExternalContext.Namespace.Name != "team-a" || built[2].Scenario.ExternalContext.Namespace.Name != "team-b" {
+		t.Errorf("per-resource external contexts = %#v", built)
+	}
+	if built[3].SnapshotName != "0002-0002.yaml" {
+		t.Errorf("last snapshot name = %q, want 0002-0002.yaml", built[3].SnapshotName)
+	}
+
+	_, err = manifest.BuildScenarios(resources, configurations, manifest.OfflineResolver{}, manifest.BuildOptions{
+		ExternalContext: &contract.ExternalContext{},
+		ExternalContextFor: func(manifest.Document, manifest.DiscoveryResolution) (*contract.ExternalContext, error) {
+			return nil, nil
+		},
+	})
+	if !errors.Is(err, contract.ErrInvalidInput) {
+		t.Errorf("ambiguous external context error = %v, want invalid input", err)
+	}
+}
+
 func TestBuildScenariosUsesVerifiedDiscoveryWithoutInference(t *testing.T) {
 	t.Parallel()
 

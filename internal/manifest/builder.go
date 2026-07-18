@@ -135,9 +135,10 @@ func ConfigurationFromDocument(document Document) (ConfigurationInput, error) {
 // BuildOptions contains explicit request and evaluator context. Identity is
 // never inferred from kubeconfig or resolver state.
 type BuildOptions struct {
-	Operation       admissionv1.Operation
-	Identity        Identity
-	ExternalContext *contract.ExternalContext
+	Operation          admissionv1.Operation
+	Identity           Identity
+	ExternalContext    *contract.ExternalContext
+	ExternalContextFor func(Document, DiscoveryResolution) (*contract.ExternalContext, error)
 }
 
 // BuiltScenario associates one immutable Scenario with adapter provenance and
@@ -163,6 +164,9 @@ func BuildScenarios(resources []Document, configurations []ConfigurationInput, r
 	if resolver == nil {
 		return nil, &contract.InvalidInputError{Field: "resolver", Err: errors.New("resource resolver is required")}
 	}
+	if options.ExternalContext != nil && options.ExternalContextFor != nil {
+		return nil, &contract.InvalidInputError{Field: "externalContext", Err: errors.New("use either one shared external context or a per-resource resolver")}
+	}
 	operation := options.Operation
 	if operation == "" {
 		operation = admissionv1.Create
@@ -187,12 +191,20 @@ func BuildScenarios(resources []Document, configurations []ConfigurationInput, r
 		if err := validateResolution(resource.Object.GroupVersionKind(), resolution); err != nil {
 			return nil, &DocumentError{Source: resource.Source, Err: err}
 		}
-		if err := validateScope(metadata.namespace, resolution, options.ExternalContext); err != nil {
+		resourceOptions := options
+		if options.ExternalContextFor != nil {
+			resourceOptions.ExternalContext, err = options.ExternalContextFor(resource, resolution)
+			if err != nil {
+				return nil, &DocumentError{Source: resource.Source, Err: err}
+			}
+			resourceOptions.ExternalContextFor = nil
+		}
+		if err := validateScope(metadata.namespace, resolution, resourceOptions.ExternalContext); err != nil {
 			return nil, &DocumentError{Source: resource.Source, Err: err}
 		}
 
 		for configurationIndex, configuration := range configurations {
-			built, err := buildScenario(resource, metadata, configuration, resolution, options, resourceIndex, configurationIndex)
+			built, err := buildScenario(resource, metadata, configuration, resolution, resourceOptions, resourceIndex, configurationIndex)
 			if err != nil {
 				return nil, err
 			}
