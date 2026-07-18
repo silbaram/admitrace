@@ -27,6 +27,8 @@ const (
 	ReasonCodeEquivalenceContextMissing ReasonCode = "EQUIVALENCE_CONTEXT_MISSING"
 	// ReasonCodeInternalError identifies a failure of an internal invariant or operation.
 	ReasonCodeInternalError ReasonCode = "INTERNAL_ERROR"
+	// ReasonCodeIdentityContextMissing identifies admission identity that was not explicitly supplied.
+	ReasonCodeIdentityContextMissing ReasonCode = "IDENTITY_CONTEXT_MISSING"
 	// ReasonCodeInvalidInput identifies input that does not satisfy the evaluation contract.
 	ReasonCodeInvalidInput ReasonCode = "INVALID_INPUT"
 	// ReasonCodeKubernetesEvaluationError identifies an error returned by Kubernetes evaluation semantics.
@@ -101,6 +103,7 @@ var reasonCodeRegistry = [...]ReasonDefinition{
 	{Code: ReasonCodeEvaluationProblemPending, Disposition: ReasonDispositionPending},
 	{Code: ReasonCodeEquivalenceContextMissing, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeInternalError, Disposition: ReasonDispositionCompleted},
+	{Code: ReasonCodeIdentityContextMissing, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeInvalidInput, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeKubernetesEvaluationError, Disposition: ReasonDispositionCompleted},
 	{Code: ReasonCodeMatchConditionsTrue, Disposition: ReasonDispositionCompleted},

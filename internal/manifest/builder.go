@@ -12,7 +12,6 @@ import (
 	"github.com/silbaram/admitrace/internal/scenario"
 	admissionv1 "k8s.io/api/admission/v1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
-	authenticationv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -137,18 +136,19 @@ func ConfigurationFromDocument(document Document) (ConfigurationInput, error) {
 // never inferred from kubeconfig or resolver state.
 type BuildOptions struct {
 	Operation       admissionv1.Operation
-	UserInfo        authenticationv1.UserInfo
+	Identity        Identity
 	ExternalContext *contract.ExternalContext
 }
 
 // BuiltScenario associates one immutable Scenario with adapter provenance and
 // its collision-free stable snapshot filename.
 type BuiltScenario struct {
-	Scenario      contract.Scenario
-	Resource      Source
-	Configuration Source
-	Resolution    DiscoveryResolution
-	SnapshotName  string
+	Scenario         contract.Scenario
+	Resource         Source
+	Configuration    Source
+	Resolution       DiscoveryResolution
+	SnapshotName     string
+	IdentityProvided bool
 }
 
 // BuildScenarios creates one Scenario for every resource×configuration pair in
@@ -167,8 +167,8 @@ func BuildScenarios(resources []Document, configurations []ConfigurationInput, r
 	if operation == "" {
 		operation = admissionv1.Create
 	}
-	if operation != admissionv1.Create {
-		return nil, &contract.UnsupportedCapabilityError{Capability: "manifest operation", Err: fmt.Errorf("operation %q is unsupported; only CREATE is supported", operation)}
+	if err := ValidateOperation(operation); err != nil {
+		return nil, err
 	}
 
 	result := make([]BuiltScenario, 0, len(resources)*len(configurations))
@@ -305,7 +305,7 @@ func buildScenario(resource Document, metadata resourceMetadata, configuration C
 	if err != nil {
 		return BuiltScenario{}, &contract.InternalError{Operation: "clone external context", Err: err}
 	}
-	userInfo := options.UserInfo.DeepCopy()
+	userInfo := options.Identity.userInfoCopy()
 	scope := contract.RequestScopeCluster
 	if resolution.Namespaced {
 		scope = contract.RequestScopeNamespaced
@@ -341,11 +341,12 @@ func buildScenario(resource Document, metadata resourceMetadata, configuration C
 	}
 	scenario.ApplyDefaults(&scenarioInput)
 	return BuiltScenario{
-		Scenario:      scenarioInput,
-		Resource:      resource.Source,
-		Configuration: configuration.Source,
-		Resolution:    resolution,
-		SnapshotName:  fmt.Sprintf("%04d-%04d.yaml", resourceIndex+1, configurationIndex+1),
+		Scenario:         scenarioInput,
+		Resource:         resource.Source,
+		Configuration:    configuration.Source,
+		Resolution:       resolution,
+		SnapshotName:     fmt.Sprintf("%04d-%04d.yaml", resourceIndex+1, configurationIndex+1),
+		IdentityProvided: options.Identity.Provided(),
 	}, nil
 }
 

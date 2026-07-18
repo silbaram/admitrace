@@ -201,6 +201,8 @@ const (
 	DiagnosticCodeIdentityContextMissing DiagnosticCode = "IDENTITY_CONTEXT_MISSING"
 	// DiagnosticCodeSnapshotRefused identifies an exact-copy snapshot rejected by policy.
 	DiagnosticCodeSnapshotRefused DiagnosticCode = "SNAPSHOT_REFUSED"
+	// DiagnosticCodeUnsupportedOperation identifies a non-CREATE adapter request.
+	DiagnosticCodeUnsupportedOperation DiagnosticCode = "UNSUPPORTED_OPERATION"
 )
 
 // IsValid reports whether code belongs to the adapter diagnostic vocabulary.
@@ -209,7 +211,8 @@ func (code DiagnosticCode) IsValid() bool {
 	case DiagnosticCodeIncomplete,
 		DiagnosticCodeProfileMismatch,
 		DiagnosticCodeIdentityContextMissing,
-		DiagnosticCodeSnapshotRefused:
+		DiagnosticCodeSnapshotRefused,
+		DiagnosticCodeUnsupportedOperation:
 		return true
 	default:
 		return false

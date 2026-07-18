@@ -23,6 +23,7 @@ func TestReasonCodeRegistry(t *testing.T) {
 		{Code: contract.ReasonCodeEvaluationProblemPending, Disposition: contract.ReasonDispositionPending},
 		{Code: contract.ReasonCodeEquivalenceContextMissing, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeInternalError, Disposition: contract.ReasonDispositionCompleted},
+		{Code: contract.ReasonCodeIdentityContextMissing, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeInvalidInput, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeKubernetesEvaluationError, Disposition: contract.ReasonDispositionCompleted},
 		{Code: contract.ReasonCodeMatchConditionsTrue, Disposition: contract.ReasonDispositionCompleted},

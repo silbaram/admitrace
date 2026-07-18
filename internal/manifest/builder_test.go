@@ -12,7 +12,6 @@ import (
 	"github.com/silbaram/admitrace/internal/resourcecatalog"
 	"github.com/silbaram/admitrace/internal/scenario"
 	admissionv1 "k8s.io/api/admission/v1"
-	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -34,11 +33,11 @@ metadata:
 `)
 	configurations := decodeConfigurationDocuments(t, validatingConfiguration+"---\n"+mutatingConfiguration)
 	options := manifest.BuildOptions{
-		UserInfo: authenticationv1.UserInfo{
-			Username: "alice",
-			Groups:   []string{"developers"},
-			Extra:    map[string]authenticationv1.ExtraValue{"tenant": {"blue"}},
-		},
+		Identity: newTestIdentity(t, manifest.IdentityOptions{
+			User:      "alice",
+			Groups:    []string{"developers"},
+			UserExtra: []string{"tenant=blue"},
+		}),
 		ExternalContext: &contract.ExternalContext{Namespace: &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-a"}}},
 	}
 
@@ -94,8 +93,10 @@ kind: Pod
 metadata: {name: immutable, namespace: team-a}
 `)
 	configurations := decodeConfigurationDocuments(t, validatingConfiguration)
+	identity := newTestIdentity(t, manifest.IdentityOptions{User: "alice", UserExtra: []string{"tenant=blue"}})
+	leakedUserInfo := identity.UserInfo()
 	options := manifest.BuildOptions{
-		UserInfo:        authenticationv1.UserInfo{Username: "alice", Extra: map[string]authenticationv1.ExtraValue{"tenant": {"blue"}}},
+		Identity:        identity,
 		ExternalContext: &contract.ExternalContext{Namespace: &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-a"}}},
 	}
 
@@ -106,7 +107,7 @@ metadata: {name: immutable, namespace: team-a}
 	resources[0].RawJSON[0] = 'x'
 	resources[0].Object.SetName("changed")
 	configurations[0].Validating.Webhooks[0].Name = "changed.example.com"
-	options.UserInfo.Extra["tenant"][0] = "changed"
+	leakedUserInfo.Extra["tenant"][0] = "changed"
 	options.ExternalContext.Namespace.Name = "changed"
 
 	item := built[0].Scenario
@@ -314,3 +315,12 @@ webhooks:
         apiVersions: ["*"]
         resources: ["*"]
 `
+
+func newTestIdentity(t *testing.T, options manifest.IdentityOptions) manifest.Identity {
+	t.Helper()
+	identity, err := manifest.NewIdentity(options)
+	if err != nil {
+		t.Fatalf("NewIdentity() error = %v", err)
+	}
+	return identity
+}

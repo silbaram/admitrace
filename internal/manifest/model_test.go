@@ -42,6 +42,7 @@ func TestAdapterDiagnosticCodesRemainSeparateFromEvaluationErrors(t *testing.T) 
 		manifest.DiagnosticCodeProfileMismatch,
 		manifest.DiagnosticCodeIdentityContextMissing,
 		manifest.DiagnosticCodeSnapshotRefused,
+		manifest.DiagnosticCodeUnsupportedOperation,
 	}
 	for _, code := range codes {
 		if !code.IsValid() {
