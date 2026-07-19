@@ -94,7 +94,7 @@ Codex write-capable runs use native `workspace-write` sandbox confinement inside
 
 7. Run the independent monitor gate before finish when the run was started with `--require-monitor`. Invoke `p2a-performance-monitor` as a separate subagent when the CLI supports spawning subagents, or perform a separated read-only review pass when spawning is unavailable. Pass the target task id, acceptance criteria, and the latest run log for that task, including `verification`, `changedFiles`, `status`, and `workspaceRef`.
 
-   Write the monitor result to the run's `runs/<runId>.monitor-verdict.json` path using this shape:
+   Write the monitor result beside the run file, normally `runs/<iterationId>/<runId>.monitor-verdict.json` (legacy flat runs remain readable), using this shape:
 
    ```json
    {
@@ -109,9 +109,9 @@ Codex write-capable runs use native `workspace-write` sandbox confinement inside
 
    Use `verdict: "block"` and fill the relevant concern array when the task should not be accepted. When multiple concern arrays are populated, failure-class mapping priority is `scope_concerns` → `verification_concerns` → `unmet_acceptance` → `needs_user_decision`. `p2a_execute finish` and `p2a_runs finish` both enforce this verdict when the run requires a monitor gate.
 
-8. Run the style-rating pass before finish when the target project contains `.plan2agent/style.md` with at least one filled section. If `.plan2agent/style.md` exists and has any filled section, this pass is required before finish. Invoke `p2a-style-rater` as a separate read-only subagent when the CLI supports spawning subagents, or perform a separated read-only review pass when spawning is unavailable. Pass the target task id, the run's `changedFiles` list, and the complete `.plan2agent/style.md` contents. If the pass is skipped for any reason, explicitly record in the run notes that it was skipped and why; silent omission is forbidden.
+8. Run the style-rating pass before finish when the target project contains `.plan2agent/style.md` with at least one filled section. If `.plan2agent/style.md` exists and has any filled section, this pass is required before finish. Invoke `p2a-style-rater` as a separate read-only subagent when the CLI supports spawning subagents, or perform a separated read-only review pass when spawning is unavailable. Pass the target task id, the run's `changedFiles` list, and the complete `.plan2agent/style.md` contents.
 
-   Write the style-rating result to the run's `runs/<runId>.style-verdict.json` path using this shape:
+   Persist a style-verdict sidecar only when the result contains a concrete violation (`violationCount > 0`). Write that result beside the run file, normally `runs/<iterationId>/<runId>.style-verdict.json` (legacy flat runs remain readable), using this shape:
 
    ```json
    {
@@ -124,12 +124,19 @@ Codex write-capable runs use native `workspace-write` sandbox confinement inside
          ]
        }
      ],
-     "violationCount": 0,
+     "violationCount": 1,
      "note": ""
    }
    ```
 
-   This style verdict is informational only and must never affect `p2a_execute finish`, `p2a_runs finish`, `p2a_tasks done`, `p2a_tasks block`, monitor verdicts, failure classes, or any done/block decision. If `.plan2agent/style.md` is absent or has no filled sections, skip the pass or record a `not_applicable` result. Once a style verdict is recorded, its `sections`, `violations`, and `violationCount` are historical record and must never be edited. If a violation is resolved later, append a dated `RESOLUTION:` line to the verdict `note` field or leave a fresh verdict from a later run's re-rating; do not rewrite the original finding fields. Retroactive rating is allowed when a run session omitted the pass, but the verdict `note` must state that the rating is retroactive. If `violationCount > 0`, carry the violations forward as candidate evidence for the step 10 retrospective style proposal with `target: "project"` and `targetFiles: [".plan2agent/style.md"]`. When the user decides to fix recorded violations, the default path is to register the work as a maintenance task with `p2a.mjs iteration maintenance add` and execute it with run history. If an exception requires an immediate ad-hoc fix, include the rationale and the source style-verdict path in the commit message.
+   Do not create a style-verdict file for a clean or non-applicable result. Instead, append exactly one of these durable run-note forms so absence of a sidecar never ambiguously means that the review was omitted:
+
+   - `STYLE_REVIEW: pass; violationCount=0`
+   - `STYLE_REVIEW: not_applicable; reason=<reason>`
+   - `STYLE_REVIEW: skipped; reason=<reason>`
+   - `STYLE_REVIEW: violations; violationCount=<count>; ref=<artifact-root-relative-style-verdict-path>`
+
+   Silent omission is forbidden. This style review is informational only and must never affect `p2a_execute finish`, `p2a_runs finish`, `p2a_tasks done`, `p2a_tasks block`, monitor verdicts, failure classes, or any done/block decision. Once a positive style-verdict is recorded, its `sections`, `violations`, and `violationCount` are historical record and must never be edited. Existing zero-violation verdict files are also historical records: do not delete or rewrite them when adopting this prospective policy. If a violation is resolved later, append a dated `RESOLUTION:` line to the verdict `note` field or leave a fresh verdict from a later run's re-rating; do not rewrite the original finding fields. Retroactive rating is allowed when a run session omitted the pass: persist a sidecar only if the retroactive result has violations, and state that the rating is retroactive in the sidecar note or clean-result run note. If `violationCount > 0`, carry the violations forward as candidate evidence for the step 10 retrospective style proposal with `target: "project"` and `targetFiles: [".plan2agent/style.md"]`. When the user decides to fix recorded violations, the default path is to register the work as a maintenance task with `p2a.mjs iteration maintenance add` and execute it with run history. If an exception requires an immediate ad-hoc fix, include the rationale and the source style-verdict path in the commit message.
 
 9. Finish the run through `p2a_execute`, collecting git state and letting the CLI mark the task done or blocked:
 
@@ -197,7 +204,7 @@ Before invoking the reviewer, the main dev-execution owner must build one eviden
 - The full current iteration task graph, including every task status, preserved as `task_graph_snapshot`, plus a `task_snapshot` of each task's id/title/status, a task-count snapshot, the raw task-graph file `task_graph_sha256`, and the schema-defined deterministic `task_graph_snapshot_sha256`.
 - The approved product and implementation spec and its reference.
 - The complete `.plan2agent/style.md` contents and reference when the file has at least one filled section; otherwise use `style_ref: null`.
-- For every `done` task, evidence from its latest successful finished run: `task_id`, `task_title`, `run_id`, artifact-root-relative `run_ref` in the exact form `runs/<run_id>.json`, raw run-file `run_sha256`, the complete parsed `p2a.run.v1` object preserved as immutable `run_snapshot`, deterministic `run_snapshot_sha256 = sha256(JSON.stringify(run_snapshot))`, `run_finished_at`, the complete `changedFiles` list normalized as `changed_files`, and the complete verification summary normalized to `type`, `command`, `status`, `exit_code`, and `source`.
+- For every `done` task, evidence from its latest successful finished run: `task_id`, `task_title`, `run_id`, artifact-root-relative `run_ref` formed as `runs/<run-index entry runRef>` (normally `runs/<iteration_id>/<run_id>.json`, with legacy flat refs still readable), raw run-file `run_sha256`, the complete parsed `p2a.run.v1` object preserved as immutable `run_snapshot`, deterministic `run_snapshot_sha256 = sha256(JSON.stringify(run_snapshot))`, `run_finished_at`, the complete `changedFiles` list normalized as `changed_files`, and the complete verification summary normalized to `type`, `command`, `status`, `exit_code`, and `source`.
 - The ids of every remaining `todo`, `in_progress`, or `blocked` task.
 - A clear instruction that only completed scope is under review and every suspected gap must be compared against remaining tasks before classification.
 
