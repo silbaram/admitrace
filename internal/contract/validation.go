@@ -12,6 +12,8 @@ var (
 	ErrDeterminateRequiresOutcome = errors.New("determinate evaluation requires an outcome")
 	// ErrInvalidEnumValue indicates a value outside a declared semantic vocabulary.
 	ErrInvalidEnumValue = errors.New("invalid enum value")
+	// ErrConfigurationKindMismatch indicates nested result configurationKind does not match the result envelope.
+	ErrConfigurationKindMismatch = errors.New("configuration kind mismatch")
 	// ErrTerminalTraceRequired indicates a determinate evaluation with no terminal cause.
 	ErrTerminalTraceRequired = errors.New("determinate evaluation requires one terminal trace step")
 	// ErrMultipleTerminalTraceSteps indicates an ambiguous determinate terminal cause.

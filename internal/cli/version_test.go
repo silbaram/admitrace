@@ -26,7 +26,7 @@ Scenario schema: admitrace.io/v1alpha1, kind Scenario
 result schema: admitrace.result/v1alpha1
 compatibility profile: kubernetes-1.36.2-defaults
 Kubernetes: 1.36.2 (kubernetes-defaults)
-Go language: 1.26
+Go language: 1.26.0
 Go toolchain: go1.26.5
 dependency: github.com/spf13/cobra v1.10.2
 dependency: k8s.io/api v0.36.2
@@ -76,7 +76,7 @@ func TestExecuteVersionJSON(t *testing.T) {
     "featureGatePolicy": "kubernetes-defaults"
   },
   "dependencies": {
-    "goLanguage": "1.26",
+    "goLanguage": "1.26.0",
     "goToolchain": "go1.26.5",
     "modules": [
       {

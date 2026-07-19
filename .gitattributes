@@ -1,0 +1,6 @@
+* text=auto
+*.sh text eol=lf
+*.golden.txt text eol=lf
+*.golden.json text eol=lf
+internal/render/testdata/** text eol=lf
+internal/contract/testdata/** text eol=lf

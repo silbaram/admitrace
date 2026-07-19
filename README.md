@@ -14,7 +14,7 @@ It evaluates `ValidatingWebhookConfiguration` and `MutatingWebhookConfiguration`
 Install the tagged release with Go:
 
 ```bash
-go install github.com/silbaram/admitrace/cmd/admitrace@v0.1.0
+go install github.com/silbaram/admitrace/cmd/admitrace@v0.1.2
 ```
 
 Make sure `$(go env GOPATH)/bin` (or `GOBIN`) is on `PATH`, then verify the installation:
@@ -24,7 +24,7 @@ admitrace version
 admitrace --help
 ```
 
-Release source: [`v0.1.0`](https://github.com/silbaram/admitrace/tree/v0.1.0)
+Release source: [`v0.1.2`](https://github.com/silbaram/admitrace/tree/v0.1.2)
 
 ## Documentation
 
@@ -197,3 +197,7 @@ Kubernetes-version-specific code is isolated behind `internal/compat/kube136`. T
 ## Version policy
 
 The profile `kubernetes-1.36.2-defaults` means exactly Kubernetes `1.36.2` with that release's default feature gates. A new Kubernetes version requires a separate compatibility profile and exact-version parity evidence; it is never routed through the existing profile by approximation.
+
+## License
+
+AdmiTrace is licensed under the Apache License 2.0.

@@ -155,7 +155,7 @@ func (p NamespaceProvider) ContextFor(request normalize.RequestContext) (Namespa
 	case kube136.NamespaceContextModeNotRequired:
 		return NamespaceContext{Source: NamespaceContextNotRequired}, nil
 	case kube136.NamespaceContextModeFixture:
-		namespace, err := p.Lookup(request.Namespace)
+		namespace, err := p.Lookup(namespaceFixtureLookupName(request))
 		if err != nil {
 			return NamespaceContext{}, err
 		}
@@ -170,6 +170,13 @@ func (p NamespaceProvider) ContextFor(request normalize.RequestContext) (Namespa
 			Err:       fmt.Errorf("unsupported namespace context mode %q", mode),
 		}
 	}
+}
+
+func namespaceFixtureLookupName(request normalize.RequestContext) string {
+	if request.Resource.Group == "" && request.Resource.Resource == "namespaces" && request.Namespace == "" {
+		return request.Name
+	}
+	return request.Namespace
 }
 
 func namespaceFromRequestObject(snapshot normalize.ObjectSnapshot) (*corev1.Namespace, error) {
