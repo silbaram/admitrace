@@ -28,10 +28,10 @@ admitrace --help
 
 ## 문서
 
-- [빠른 시작](docs/quickstart.ko.md): single/multi-document resource 오프라인 실행, 제한적 hydration, snapshot export, 기존 Scenario CI 검사
-- [Scenario·manifest adapter·결과 레퍼런스](docs/reference.ko.md): schema, provenance, GET-only hydration, SnapshotPolicy, reason code, 종료 코드와 명시적 비범위
+- [문서 안내](docs/README.ko.md): 제품 설명, 테스트 설명과 실행 가능한 예제를 목적별로 확인합니다.
+- 제품 문서: [빠른 시작](docs/product/quickstart.ko.md), [Scenario·manifest adapter·결과 레퍼런스](docs/product/reference.ko.md)
+- 테스트 문서: [테스트 환경 설정](docs/testing/test-environment-setup.ko.md), [v0.1 릴리스 준비 검증](docs/testing/release-readiness.ko.md)
 - [공개 beta 검증](validation/beta/README.ko.md): Gatekeeper·Istio 고정 사례의 라이선스 출처, CLI 결과와 Kubernetes `1.36.2` oracle 근거
-- [v0.1 릴리스 준비 검증](docs/release-readiness.ko.md): pin, unit·fuzz test, standalone smoke, parity, conformance, beta 근거와 문서 완료를 한 번에 검사하는 fail-closed 명령
 
 ## 현재 상태
 

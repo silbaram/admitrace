@@ -241,26 +241,26 @@ PARITY_REPORT="$parity_report" ./hack/test-parity-gate.sh
 require_text '## Supported scope' README.md
 require_text '## Out of scope' README.md
 require_text 'manifest adapter' README.md
-require_text '## Mutating limitation' docs/reference.md
-require_text '## Explicit non-goals' docs/reference.md
-require_text '## Manifest adapter and limited hydration' docs/reference.md
-require_text '### SnapshotPolicy' docs/reference.md
-require_text '## Explain resources offline' docs/quickstart.md
-require_text '## Export and replay snapshots' docs/quickstart.md
+require_text '## Mutating limitation' docs/product/reference.md
+require_text '## Explicit non-goals' docs/product/reference.md
+require_text '## Manifest adapter and limited hydration' docs/product/reference.md
+require_text '### SnapshotPolicy' docs/product/reference.md
+require_text '## Explain resources offline' docs/product/quickstart.md
+require_text '## Export and replay snapshots' docs/product/quickstart.md
 require_text '## 지원 범위' README.ko.md
 require_text '## 비범위' README.ko.md
 require_text 'manifest adapter' README.ko.md
-require_text '## Mutating 제한과 명시적 비범위' docs/reference.ko.md
-require_text '## Manifest adapter와 제한적 hydration' docs/reference.ko.md
-require_text '### SnapshotPolicy' docs/reference.ko.md
-require_text '## Resource를 완전 오프라인으로 설명' docs/quickstart.ko.md
-require_text '## Snapshot export와 재생' docs/quickstart.ko.md
+require_text '## Mutating 제한과 명시적 비범위' docs/product/reference.ko.md
+require_text '## Manifest adapter와 제한적 hydration' docs/product/reference.ko.md
+require_text '### SnapshotPolicy' docs/product/reference.ko.md
+require_text '## Resource를 완전 오프라인으로 설명' docs/product/quickstart.ko.md
+require_text '## Snapshot export와 재생' docs/product/quickstart.ko.md
 require_text 'gatekeeper-v3.22.2-validating.yaml' validation/beta/README.md
 require_text 'istio-1.30.0-mutating.yaml' validation/beta/README.md
-require_text 'docs/release-readiness.md' README.md
-require_text 'docs/release-readiness.ko.md' README.ko.md
-require_text 'verify-release-readiness.sh' docs/release-readiness.md
-require_text 'verify-release-readiness.sh' docs/release-readiness.ko.md
+require_text 'docs/testing/release-readiness.md' README.md
+require_text 'docs/testing/release-readiness.ko.md' README.ko.md
+require_text 'verify-release-readiness.sh' docs/testing/release-readiness.md
+require_text 'verify-release-readiness.sh' docs/testing/release-readiness.ko.md
 
 printf '%s\n' 'release readiness: passed'
 if [ -n "${PARITY_REPORT:-}" ]; then

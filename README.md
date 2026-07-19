@@ -28,10 +28,10 @@ Release source: [`v0.1.2`](https://github.com/silbaram/admitrace/tree/v0.1.2)
 
 ## Documentation
 
-- [Quickstart](docs/quickstart.md): run single/multi-document resources offline, opt into limited hydration, export snapshots, and preserve Scenario CI checks.
-- [Scenario, manifest adapter, and result reference](docs/reference.md): schemas, provenance, GET-only hydration, SnapshotPolicy, reason codes, exit codes, and explicit non-goals.
+- [Documentation map](docs/README.md): browse product guides, testing guides, and executable examples.
+- Product: [Quickstart](docs/product/quickstart.md) and [Scenario, manifest adapter, and result reference](docs/product/reference.md).
+- Testing: [Test environment setup](docs/testing/test-environment-setup.md) and [v0.1 release readiness](docs/testing/release-readiness.md).
 - [Public beta validation](validation/beta/README.md): pinned Gatekeeper and Istio cases with license provenance, CLI results, and Kubernetes `1.36.2` oracle evidence.
-- [v0.1 release readiness](docs/release-readiness.md): one fail-closed command for pins, unit and fuzz tests, standalone smoke, parity, conformance, beta evidence, and documentation checks.
 
 ## Project status
 
